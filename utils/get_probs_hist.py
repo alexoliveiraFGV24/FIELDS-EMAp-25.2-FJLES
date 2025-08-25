@@ -2,7 +2,7 @@ import numpy as np
 import time
 from itertools import product
 
-def previsao(pacientes:np.array, utis:int=4, internacoes:int=4, altas:int=4, threshold:float=0):
+def previsao_permutacao(pacientes:np.array, utis:int=4, internacoes:int=4, altas:int=4, threshold:float=0):
     
     # Iniciando contador de tempo
     t = time.time()
@@ -10,16 +10,16 @@ def previsao(pacientes:np.array, utis:int=4, internacoes:int=4, altas:int=4, thr
     # Número de pacientes
     num_pacientes = pacientes.shape[0]
 
-    # # Verificações básicas
-    # if (utis <= 0 or internacoes <= 0 or altas <= 0 or threshold > 1):
-    #     return "Não pode"
-    # if (utis > num_pacientes or internacoes > num_pacientes or altas > num_pacientes):
-    #     return "Não pode"
-    # if (pacientes.shape[1] != 3):
-    #     return "Não pode"
-    # for paciente in pacientes:
-    #     if sum(paciente) != 1:
-    #         return "Não pode"
+    # Verificações básicas
+    if (utis <= 0 or internacoes <= 0 or altas <= 0 or threshold > 1):
+        return "Não pode"
+    if (utis > num_pacientes or internacoes > num_pacientes or altas > num_pacientes):
+        return "Não pode"
+    if (pacientes.shape[1] != 3):
+        return "Não pode"
+    for paciente in pacientes:
+        if sum(paciente) != 1:
+            return "Não pode"
     
     # Distribuições marginais (incluindo o caso 0)
     probs_utis = np.zeros(utis + 1)
@@ -100,6 +100,43 @@ def previsao_recursiva(pacientes: np.ndarray, utis: int=4, internacoes: int=4, a
     
     # Inicia no primeiro paciente (idx=0)
     backtrack(0, 0, 0, 0, 1.0)
+    
+    # Verificação para o threshold passado
+    probs_utis[probs_utis < threshold] = 0
+    probs_internacoes[probs_internacoes < threshold] = 0
+    probs_altas[probs_altas < threshold] = 0
+    
+    # Finalizo a contagem de tempo
+    t = time.time() - t
+    
+    # Retorno    
+    return probs_utis, probs_internacoes, probs_altas, t
+
+
+
+def previsao_convolucao_fft(pacientes: np.ndarray, utis: int=4, internacoes: int=4, altas: int=4, threshold:float=0):
+        
+    # Iniciando contador de tempo
+    t = time.time()
+
+    # Número de pacientes
+    num_pacientes = pacientes.shape[0]
+    
+    # Verificações básicas
+    if (utis <= 0 or internacoes <= 0 or altas <= 0 or threshold > 1):
+        return "Não pode"
+    if (utis > num_pacientes or internacoes > num_pacientes or altas > num_pacientes):
+        return "Não pode"
+    if (pacientes.shape[1] != 3):
+        return "Não pode"
+    for paciente in pacientes:
+        if sum(paciente) != 1:
+            return "Não pode"
+    
+    # Distribuições marginais (incluindo o caso 0)
+    probs_utis = np.zeros(utis+1)
+    probs_internacoes = np.zeros(internacoes+1)
+    probs_altas = np.zeros(altas+1)
     
     # Verificação para o threshold passado
     probs_utis[probs_utis < threshold] = 0
