@@ -23,4 +23,3 @@ for p in p_list[1:]:
 for k, prob in enumerate(pmf):
     print(f"P(S={k}) = {prob}")
 
-print("Soma das probabilidades:", pmf.sum())
