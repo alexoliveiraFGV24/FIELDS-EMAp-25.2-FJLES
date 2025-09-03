@@ -2,7 +2,7 @@ import numpy as np
 import time
 from itertools import product
 from scipy.stats import norm
-from get_samples import *
+from .get_samples import *
 
 
 

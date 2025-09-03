@@ -1,6 +1,13 @@
 import numpy as np
 import pytest
-from utils.get_probs_hist import previsao_convolucao  
+
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from utils.get_probs_hist import previsao_convolucao
+
 
 
 def test_formato_incorreto():
