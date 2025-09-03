@@ -117,8 +117,58 @@ def previsao_recursiva(pacientes: np.ndarray, utis: int=4, internacoes: int=4, a
     return probs_utis, probs_internacoes, probs_altas, t
 
 
+
 def previsao_convolucao(pacientes: np.ndarray, utis: int=4, internacoes: int=4, altas: int=4, threshold:float=0):
-    pass
+    
+    # Iniciando contador de tempo
+    t = time.time()
+
+    # Número de pacientes
+    num_pacientes = pacientes.shape[0]
+    
+    # Verificações básicas
+    if (utis <= 0 or internacoes <= 0 or altas <= 0 or threshold > 1):
+        return "Não pode"
+    if (utis > num_pacientes or internacoes > num_pacientes or altas > num_pacientes):
+        return "Não pode"
+    if (pacientes.shape[1] != 3):
+        return "Não pode"
+    for paciente in pacientes:
+        if not np.isclose(sum(paciente), 1):
+            return "Não pode"
+    
+    # Vetores de probabilidades
+    probs_utis_bruto = pacientes[:,0]
+    probs_internacoes_bruto = pacientes[:,1]
+    probs_altas_bruto = pacientes[:,2]
+    
+    # Função auxiliar para convolução
+    def convolve(fmp, vetor_aplicado):
+        result = [0] * (len(fmp) + len(vetor_aplicado) - 1)
+        for i, a in enumerate(fmp):
+            for j, b in enumerate(vetor_aplicado):
+                result[i + j] += a * b
+        return np.array(result)
+
+    pmf = np.array([1 - p_list[0], p_list[0]])
+
+    for p in probs_utis_bruto[1:]:
+        pmf = convolve(pmf, [1 - p, p])
+
+
+    for k, prob in enumerate(pmf):
+        print(f"P(S={k}) = {prob}")
+        
+    # Threshold
+    probs_utis[probs_utis < threshold] = 0
+    probs_internacoes[probs_internacoes < threshold] = 0
+    probs_altas[probs_altas < threshold] = 0
+    
+    # Finalizo a contagem de tempo
+    t = time.time() - t
+    
+    # Retorno
+    return probs_utis, probs_internacoes, probs_altas, t
 
 
 
