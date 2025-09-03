@@ -1,6 +1,10 @@
 import numpy as np
 import time
 from itertools import product
+from scipy.stats import norm
+from get_samples import *
+
+
 
 def previsao_permutacao(pacientes:np.array, utis:int=4, internacoes:int=4, altas:int=4, threshold:float=0):
     
@@ -18,7 +22,7 @@ def previsao_permutacao(pacientes:np.array, utis:int=4, internacoes:int=4, altas
     if (pacientes.shape[1] != 3):
         return "Não pode"
     for paciente in pacientes:
-        if sum(paciente) != 1:
+        if not np.isclose(sum(paciente), 1):
             return "Não pode"
     
     # Distribuições marginais (incluindo o caso 0)
@@ -73,7 +77,7 @@ def previsao_recursiva(pacientes: np.ndarray, utis: int=4, internacoes: int=4, a
     if (pacientes.shape[1] != 3):
         return "Não pode"
     for paciente in pacientes:
-        if sum(paciente) != 1:
+        if not np.isclose(sum(paciente), 1):
             return "Não pode"
     
     # Distribuições marginais (incluindo o caso 0)
@@ -113,13 +117,13 @@ def previsao_recursiva(pacientes: np.ndarray, utis: int=4, internacoes: int=4, a
     return probs_utis, probs_internacoes, probs_altas, t
 
 
+def previsao_convolucao(pacientes: np.ndarray, utis: int=4, internacoes: int=4, altas: int=4, threshold:float=0):
+    pass
 
-def previsao_convolucao_fft(pacientes: np.ndarray, utis: int=4, internacoes: int=4, altas: int=4, threshold:float=0):
-        
-    # Iniciando contador de tempo
+
+
+def previsao_rna_fft(pacientes: np.ndarray, utis: int=4, internacoes: int=4, altas: int=4, threshold:float=0):
     t = time.time()
-
-    # Número de pacientes
     num_pacientes = pacientes.shape[0]
     
     # Verificações básicas
@@ -130,15 +134,43 @@ def previsao_convolucao_fft(pacientes: np.ndarray, utis: int=4, internacoes: int
     if (pacientes.shape[1] != 3):
         return "Não pode"
     for paciente in pacientes:
-        if sum(paciente) != 1:
+        if not np.isclose(sum(paciente), 1):
             return "Não pode"
     
-    # Distribuições marginais (incluindo o caso 0)
-    probs_utis = np.zeros(utis+1)
-    probs_internacoes = np.zeros(internacoes+1)
-    probs_altas = np.zeros(altas+1)
+    # Vetores de probabilidades
+    probs_utis_bruto = pacientes[:,0]
+    probs_internacoes_bruto = pacientes[:,1]
+    probs_altas_bruto = pacientes[:,2]
     
-    # Verificação para o threshold passado
+    # Variáveis de interesse para aproximação Poisson Binomial
+    mu_utis = np.sum(probs_utis_bruto)
+    mu_internacoes = np.sum(probs_internacoes_bruto)  
+    mu_altas = np.sum(probs_altas_bruto)
+    
+    ro_utis = np.sqrt(np.sum(probs_utis_bruto*(1-probs_utis_bruto)))
+    ro_internacoes = np.sqrt(np.sum(probs_internacoes_bruto*(1-probs_internacoes_bruto)))
+    ro_altas = np.sqrt(np.sum(probs_altas_bruto*(1-probs_altas_bruto)))
+    
+    gamma_utis = np.sum(probs_utis_bruto*(1-probs_utis_bruto)*(1-2*probs_utis_bruto)) / (ro_utis**3)
+    gamma_internacoes = np.sum(probs_internacoes_bruto*(1-probs_internacoes_bruto)*(1-2*probs_internacoes_bruto)) / (ro_internacoes**3)
+    gamma_altas = np.sum(probs_altas_bruto*(1-probs_altas_bruto)*(1-2*probs_altas_bruto)) / (ro_altas**3)
+    
+    # Função da RNA (aproximação Edgeworth)
+    def G(k, mu, ro, gamma):
+        x = (k + 0.5 - mu)/ro
+        return norm.cdf(x) - norm.pdf(x) * (gamma * (1 - x**2) / 6)
+    
+    # Probabilidades (cumulativas)
+    probs_utis = np.array([G(k, mu_utis, ro_utis, gamma_utis) - G(k-1, mu_utis, ro_utis, gamma_utis) for k in range(utis+1)])
+    probs_internacoes = np.array([G(k, mu_internacoes, ro_internacoes, gamma_internacoes) - G(k-1, mu_internacoes, ro_internacoes, gamma_internacoes)for k in range(internacoes+1)])
+    probs_altas = np.array([G(k, mu_altas, ro_altas, gamma_altas) - G(k-1, mu_altas, ro_altas, gamma_altas)for k in range(altas+1)])
+    
+    # Garantir que está no intervalo [0,1]
+    probs_utis = np.clip(probs_utis, 0, 1)
+    probs_internacoes = np.clip(probs_internacoes, 0, 1)
+    probs_altas = np.clip(probs_altas, 0, 1)
+    
+    # Threshold
     probs_utis[probs_utis < threshold] = 0
     probs_internacoes[probs_internacoes < threshold] = 0
     probs_altas[probs_altas < threshold] = 0
@@ -146,5 +178,5 @@ def previsao_convolucao_fft(pacientes: np.ndarray, utis: int=4, internacoes: int
     # Finalizo a contagem de tempo
     t = time.time() - t
     
-    # Retorno    
+    # Retorno
     return probs_utis, probs_internacoes, probs_altas, t

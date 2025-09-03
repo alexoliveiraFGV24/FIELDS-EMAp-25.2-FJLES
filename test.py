@@ -1,23 +1,16 @@
-from utils.poibin import PoiBin
-import numpy as np
 from utils.get_probs_hist import *
 from utils.get_samples import *
 
-n=6
-x = gerar_amostra(n=n)
+n=80
+x = gerar_amostra(n)
 
-uti = x[:,0]
-pb = PoiBin(uti)
+# utis1 = previsao_permutacao(x)
+utis2, t2 = previsao_permutacao(x, n-2)
+utis3, t3 = previsao_rna_fft(x, n-2)
 
-utis1 = np.zeros(x.shape[0])
-
-for i in range(x.shape[0]):
-    utis1[i] = pb.pmf(i)
-
-utis2 = previsao(pacientes=x, utis=n-1)[0]
-
-print(f"utis1 = {utis1}")
-print(f"utis2 = {utis2}")
-print(np.linalg.norm(utis1 - utis2))
-
-
+# print(utis1)
+print(utis2)
+print(utis3)
+print("")
+print(t2)
+print(t3)
