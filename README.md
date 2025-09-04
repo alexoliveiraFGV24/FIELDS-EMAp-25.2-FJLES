@@ -12,12 +12,7 @@ Esta seção abordará os progressos feitos pela equipe ao longo do projeto.
 
 ### Entendimento do universo de Healthy Analytics.
 
-Artigos e explicação sobre eles:
-
-- Artigo 1:
-- Artigo 2:
-- Artigo 3:
-- Artigo 4:
+Relatório em andamento ...
 
 ...
 
@@ -36,7 +31,7 @@ Ao final, uma solução com aproximação Normal foi também considerada, reduzi
 
 #### Código
 
-O código se encontra nos arquivo *****nome_dos_arquivos*.****
+O código se encontra nos arquivos ...
 
 
 ---
