@@ -6,7 +6,7 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from utils.get_probs_hist import previsao_convolucao
+from utils.probs import previsao_convolucao
 
 
 

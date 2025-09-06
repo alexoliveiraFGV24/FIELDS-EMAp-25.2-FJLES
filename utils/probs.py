@@ -2,7 +2,6 @@ import numpy as np
 import time
 from itertools import product
 from scipy.stats import norm
-from .get_samples import *
 
 
 
@@ -120,33 +119,26 @@ def previsao_recursiva(pacientes: np.ndarray, utis: int=4, internacoes: int=4, a
 
 def previsao_convolucao(pacientes: np.ndarray, threshold:float=0, lim_leitos = False, prob_disj = True):
     
+    # Iniciando contador de tempo
+    t = time.time()
+    
     # Definindo limites de calculo (a implementar)
     if not lim_leitos:
         lim_leitos = pacientes.shape[0]
-
-
-    # Iniciando contador de tempo
-    t = time.time()
-
-    # Número de pacientes
-    num_pacientes = pacientes.shape[0]
     
     # Verificações básicas
-
     if (pacientes.shape[1] != 3):
         return "Verifique o formato do array"
-    
     for paciente in pacientes:
         if not np.isclose(sum(paciente), 1):
             return "Inconsistência no vetor de probabilidade de algum paciente!"
         
     pacientes[pacientes<threshold] = 0
+    
     # Vetores de probabilidades
     probs_utis = pacientes[:,0]
     probs_internacao = pacientes[:,1]
     probs_altas = pacientes[:,2]
-    
-
     
     # Função auxiliar para convolução
     def convolve(fmp, vetor_aplicado):
@@ -156,35 +148,21 @@ def previsao_convolucao(pacientes: np.ndarray, threshold:float=0, lim_leitos = F
                 result[i + j] += a * b
         return np.array(result)
     
-
     #histograma uti:
     dist_uti = np.array([1 - probs_utis[0], probs_utis[0]])
-
     for p in probs_utis[1:]:
         dist_uti = convolve(dist_uti, [1 - p, p])
 
-
     #histograma internacao:
     dist_internacao = np.array([1 - probs_internacao[0], probs_internacao[0]])
-
     for p in probs_internacao[1:]:
         dist_internacao = convolve(dist_internacao, [1-p, p])
 
     #histograma alta:
     dist_altas = np.array([1-probs_altas[0], probs_altas[0]])
-
     for p in probs_altas[1:]:
         dist_altas = convolve(dist_altas, [1-p,p])
 
-    #prints
-    print("Distribuição uti: ", dist_uti)
-
-    print("Distribuição internação: ", dist_internacao)
-
-    print("Distribuição alta: ", dist_altas)
-
-        
-    
     # Finalizo a contagem de tempo
     t = time.time() - t
     
@@ -253,8 +231,3 @@ def previsao_rna_fft(pacientes: np.ndarray, utis: int=4, internacoes: int=4, alt
     
     # Retorno
     return probs_utis, probs_internacoes, probs_altas, t
-
-
-
-
-
