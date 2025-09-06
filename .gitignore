@@ -1,0 +1,89 @@
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependências
+node_modules/
+bower_components/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdb
+*.egg-info/
+*.egg
+.eggs/
+.Python
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDEs e editores
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Build
+dist/
+build/
+out/
+*.o
+*.a
+*.so
+*.dll
+*.dylib
+*.exe
+*.out
+
+# Arquivos temporários
+*.tmp
+*.temp
+*.bak
+*.cache
+*.pid
+
+# Testes
+.coverage
+.tox/
+.nox/
+pytest_cache/
+
+# Configs locais
+*.local
+*.secret
+*.env.local
+*.env.*.local
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Banco de dados
+*.sqlite3
+*.db
+
+# Arquivos compactados
+*.tar
+*.zip
+*.gz
+*.rar
+
+# Arquivos sensíveis
+/files/data/
