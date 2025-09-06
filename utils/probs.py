@@ -5,6 +5,7 @@ from scipy.stats import norm
 
 
 
+
 def previsao_permutacao(pacientes:np.array, utis:int=4, internacoes:int=4, altas:int=4, threshold:float=0):
     
     # Iniciando contador de tempo
@@ -151,17 +152,25 @@ def previsao_convolucao(pacientes: np.ndarray, threshold:float=0, lim_leitos = F
     #histograma uti:
     dist_uti = np.array([1 - probs_utis[0], probs_utis[0]])
     for p in probs_utis[1:]:
-        dist_uti = convolve(dist_uti, [1 - p, p])
+        dist_uti = np.convolve(dist_uti, [1 - p, p])
 
     #histograma internacao:
     dist_internacao = np.array([1 - probs_internacao[0], probs_internacao[0]])
     for p in probs_internacao[1:]:
-        dist_internacao = convolve(dist_internacao, [1-p, p])
+        dist_internacao = np.convolve(dist_internacao, [1-p, p])
 
     #histograma alta:
     dist_altas = np.array([1-probs_altas[0], probs_altas[0]])
     for p in probs_altas[1:]:
-        dist_altas = convolve(dist_altas, [1-p,p])
+        dist_altas = np.convolve(dist_altas, [1-p,p])
+
+    #converter de P(X=k) em P(X>k) 
+
+    dist_uti = np.cumsum(dist_uti[::-1])[::-1]
+
+    dist_altas = np.cumsum(dist_altas[::-1])[::-1]
+
+    dist_internacao = np.cumsum(dist_internacao[::-1])[::-1]
 
     # Finalizo a contagem de tempo
     t = time.time() - t
