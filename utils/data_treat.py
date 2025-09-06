@@ -1,13 +1,11 @@
 import pandas as pd
 import numpy as np
-from matplotlib import pyplot as plt
+import plot
 
 import probs 
 
 data = pd.read_csv('files/data/probabilidades.csv')
+n = 200
+result = probs.previsao_convolucao(data[['prediction_prob_alta', 'prediction_prob_ui','prediction_prob_uti']][:n].values)
 
-
-result = probs.previsao_convolucao(data[['prediction_prob_alta', 'prediction_prob_ui','prediction_prob_uti']][:20000].values)
-
-plt.plot(result[1])
-plt.show()
+plot.plot_probs_acumul(result)

@@ -2,6 +2,8 @@ import numpy as np
 import time
 from itertools import product
 from scipy.stats import norm
+from get_samples import *
+
 
 
 def previsao_permutacao(pacientes:np.array, utis:int=4, internacoes:int=4, altas:int=4, threshold:float=0):
@@ -56,6 +58,7 @@ def previsao_permutacao(pacientes:np.array, utis:int=4, internacoes:int=4, altas
     
     # Retorno
     return probs_utis, probs_internacoes, probs_altas, t
+
 
 
 def previsao_recursiva(pacientes: np.ndarray, utis: int=4, internacoes: int=4, altas: int=4, threshold:float=0):
@@ -114,28 +117,30 @@ def previsao_recursiva(pacientes: np.ndarray, utis: int=4, internacoes: int=4, a
     return probs_utis, probs_internacoes, probs_altas, t
 
 
-def previsao_convolucao(pacientes: np.ndarray, threshold:float=0, lim_leitos = False, prob_disj = True):
+
+def previsao_convolucao(pacientes: np.ndarray, utis: int=4, internacoes: int=4, altas: int=4, threshold:float=0):
     
     # Iniciando contador de tempo
     t = time.time()
-    
-    # Definindo limites de calculo (a implementar)
-    if not lim_leitos:
-        lim_leitos = pacientes.shape[0]
+
+    # Número de pacientes
+    num_pacientes = pacientes.shape[0]
     
     # Verificações básicas
+    if (utis <= 0 or internacoes <= 0 or altas <= 0 or threshold > 1):
+        return "Não pode"
+    if (utis > num_pacientes or internacoes > num_pacientes or altas > num_pacientes):
+        return "Não pode"
     if (pacientes.shape[1] != 3):
-        return "Verifique o formato do array"
+        return "Não pode"
     for paciente in pacientes:
         if not np.isclose(sum(paciente), 1):
-            return "Inconsistência no vetor de probabilidade de algum paciente!"
-        
-    pacientes[pacientes<threshold] = 0
+            return "Não pode"
     
     # Vetores de probabilidades
-    probs_utis = pacientes[:,0]
-    probs_internacao = pacientes[:,1]
-    probs_altas = pacientes[:,2]
+    probs_utis_bruto = pacientes[:,0]
+    probs_internacoes_bruto = pacientes[:,1]
+    probs_altas_bruto = pacientes[:,2]
     
     # Função auxiliar para convolução
     def convolve(fmp, vetor_aplicado):
@@ -144,40 +149,30 @@ def previsao_convolucao(pacientes: np.ndarray, threshold:float=0, lim_leitos = F
             for j, b in enumerate(vetor_aplicado):
                 result[i + j] += a * b
         return np.array(result)
+
+    pmf = np.array([1 - p_list[0], p_list[0]])
+
+    for p in probs_utis_bruto[1:]:
+        pmf = convolve(pmf, [1 - p, p])
+
+
+    for k, prob in enumerate(pmf):
+        print(f"P(S={k}) = {prob}")
+        
+    # Threshold
+    probs_utis[probs_utis < threshold] = 0
+    probs_internacoes[probs_internacoes < threshold] = 0
+    probs_altas[probs_altas < threshold] = 0
     
-    #histograma uti:
-    dist_uti = np.array([1 - probs_utis[0], probs_utis[0]])
-    for p in probs_utis[1:]:
-        dist_uti = np.convolve(dist_uti, [1 - p, p])
-
-    #histograma internacao:
-    dist_internacao = np.array([1 - probs_internacao[0], probs_internacao[0]])
-    for p in probs_internacao[1:]:
-        dist_internacao = np.convolve(dist_internacao, [1-p, p])
-
-    #histograma alta:
-    dist_altas = np.array([1-probs_altas[0], probs_altas[0]])
-    for p in probs_altas[1:]:
-        dist_altas = np.convolve(dist_altas, [1-p,p])
-
-    #converter de P(X=k) em P(X>k) 
-
-    dist_uti = np.cumsum(dist_uti[::-1])[::-1]
-
-    dist_altas = np.cumsum(dist_altas[::-1])[::-1]
-
-    dist_internacao = np.cumsum(dist_internacao[::-1])[::-1]
-
     # Finalizo a contagem de tempo
     t = time.time() - t
     
     # Retorno
-    return dist_uti, dist_internacao, dist_altas, t
+    return probs_utis, probs_internacoes, probs_altas, t
+
 
 
 def previsao_rna_fft(pacientes: np.ndarray, utis: int=4, internacoes: int=4, altas: int=4, threshold:float=0):
-
-
     t = time.time()
     num_pacientes = pacientes.shape[0]
     
