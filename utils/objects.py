@@ -11,16 +11,21 @@ class Prioridade(Enum):
 
 
 class Paciente:
-    def __init__(self, nome, idade, prioridade=0, chegada=None):
-        self.nome = nome
-        self.idade = idade
-        self.prioridade = prioridade 
-        self.chegada = chegada or datetime.now()
+    def __init__(self, dados):
+        self.nome = dados.get('nome', "NOME GENÉRICO PACIENTE")
+        self.idade = dados.get('FN_NVL_IDADE_PACIENTE_AMD') # Idade do paciente
+        self.hora_chegada = dados.get('TA_DH_PRE_ATENDIMENTO', datetime.now()) # Data e hora do pré-atendimento (Classificação de risco)
+        self.classificacao = dados.get('TA_CD_CLASSIFICACAO') # Identificador da categoria de classificação de risco
+        self.observacao_enfermeiro = dados.get('TA_DS_OBSERVACAO') # Observações sobre o paciente que foram registradas pelo enfermeiro
+        self.especialidade_medica = dados.get('E_DS_ESPECIALID') # Especialidade para qual o paciente foi encaminhado
+        self.alergia = dados.get('TA_DS_ALERGIA') # Descrição das alergias registradas na abordagem inicial
+        self.queixa_principal = dados.get('TA_DS_QUEIXA_PRINCIPAL') # Descrição da queixa principal relatada pelo responsável pelo paciente
+        
         self.prob_uti = None
         self.prob_internacao = None
         self.prob_alta = None
-        self.estado = None
-        self.chamado = None  
+
+        self.dados = dados
     
     def atualizar_estado(self, novo_estado):
         if not isinstance(novo_estado, Prioridade):
