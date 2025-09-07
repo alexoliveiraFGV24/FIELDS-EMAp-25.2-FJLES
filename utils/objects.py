@@ -19,9 +19,7 @@ class Paciente:
         self.prob_uti = None
         self.prob_internacao = None
         self.prob_alta = None
-
         self.estado = None
-
         self.chamado = None  
     
     def atualizar_estado(self, novo_estado):
