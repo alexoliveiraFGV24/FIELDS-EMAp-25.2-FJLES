@@ -1,8 +1,6 @@
-import pandas as pd
-import numpy as np
 from enum import Enum
 from datetime import datetime
-
+from faker import Faker
 
 class Prioridade(Enum):
     UTI = 1
@@ -12,7 +10,7 @@ class Prioridade(Enum):
 
 class Paciente:
     def __init__(self, dados):
-        self.nome = dados.get('nome', "NOME GENÉRICO PACIENTE")
+        self.nome = dados.get('nome', f"{Faker().name_male()}")
         self.idade = dados.get('FN_NVL_IDADE_PACIENTE_AMD') # Idade do paciente
         self.hora_chegada = dados.get('TA_DH_PRE_ATENDIMENTO', datetime.now()) # Data e hora do pré-atendimento (Classificação de risco)
         self.classificacao = dados.get('TA_CD_CLASSIFICACAO') # Identificador da categoria de classificação de risco
@@ -40,6 +38,7 @@ class Fila:
         
     def adicionar_paciente(self, paciente):
         self.pacientes.append(paciente)
+        self.quantidade_pacientes += 1
 
     def tamanho(self):
         return len(self.pacientes)

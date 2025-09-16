@@ -7,16 +7,24 @@ def plot_probs_acumul(probs):
     pmf = probs[0]
     cdf = probs[1]
 
-    plt.figure(figsize=(8,8))
-    
-    plt.subplot(2,1,1)
+    plt.figure(figsize=(12,8))
+
+    plt.subplot(2,3,1)
     plt.plot(cdf[0], label="UTI", color=cores[0])
-    plt.plot(cdf[1], label="INTERNACOES", color=cores[1])
-    plt.plot(cdf[2], label="ALTAS", color=cores[2])
     plt.grid(visible=True, alpha=0.7)
+    plt.legend()
+
+    plt.subplot(2,3,2)
     plt.title('Distribuições de Probabilidade Cumulativa (CDF)')
     plt.xlabel('k')
     plt.ylabel('$P(X > k)$')
+    plt.plot(cdf[1], label="INTER", color=cores[1])
+    plt.grid(visible=True, alpha=0.7)
+    plt.legend()
+
+    plt.subplot(2,3,3)
+    plt.plot(cdf[2], label="ALTAS", color=cores[2])
+    plt.grid(visible=True, alpha=0.7)
     plt.legend()
 
     plt.subplot(2,3,4)
@@ -25,7 +33,7 @@ def plot_probs_acumul(probs):
     plt.legend()
     
     plt.subplot(2,3,5)
-    plt.bar(np.arange(len(pmf[1])), pmf[1], width=0.8, label="INTERNACOES", color=cores[1])
+    plt.bar(np.arange(len(pmf[1])), pmf[1], width=0.8, label="INTER", color=cores[1])
     plt.title('Distribuições de Probabilidade de Massa (PMF)')
     plt.xlabel('k')
     plt.ylabel('$P(X = k)$')

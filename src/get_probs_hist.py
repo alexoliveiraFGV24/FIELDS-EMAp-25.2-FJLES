@@ -62,13 +62,11 @@ def previsao_permutacao(pacientes:np.array, utis:int=4, internacoes:int=4, altas
 
 
 def previsao_recursiva(pacientes: np.ndarray, utis: int=4, internacoes: int=4, altas: int=4, threshold:float=0):
-    
     # Iniciando contador de tempo
     t = time.time()
 
     # Número de pacientes
     num_pacientes = pacientes.shape[0]
-    
     # Verificações básicas
     if (utis <= 0 or internacoes <= 0 or altas <= 0 or threshold > 1):
         return "Não pode"
