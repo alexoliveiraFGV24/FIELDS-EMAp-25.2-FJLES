@@ -236,3 +236,5 @@ def previsao_rna_fft(pacientes: np.ndarray, utis: int=4, internacoes: int=4, alt
     
     # Retorno
     return probs_utis, probs_internacoes, probs_altas, t
+
+

@@ -35,7 +35,7 @@ def carregar_pacientes_csv(file_path) -> list:
 
 
 if __name__ == '__main__':
-    pacientes = carregar_pacientes_csv('files/data/ficticio.csv')
+    pacientes = carregar_pacientes_csv('../files/data/ficticio.csv')
     print(pacientes)
     for p in pacientes:
         print(f"NOME: {p.nome}")
