@@ -59,32 +59,38 @@ class SimuladorFila:
 
     def carregar_pacientes(self, caminho_arquivo: str):
         try:
-            df = pd.read_csv(caminho_arquivo, parse_dates=['hora_chegada'])
+            # --- CORREÇÃO PRINCIPAL ---
+            # Definindo os nomes exatos das colunas do seu arquivo CSV
+            COLUNA_HORA = 'TA_DH_PRE_ATENDIMENTO'
+            COLUNA_PROB_ALTA = 'prediction_prob_alta'
+            COLUNA_PROB_UI = 'prediction_prob_ui'  # UI = Unidade de Internação
+            COLUNA_PROB_UTI = 'prediction_prob_uti'
 
-            self.todos_os_pacientes = []
+            # Ao ler o CSV, informamos qual coluna deve ser tratada como data
+            # O parâmetro dayfirst=True ajuda o pandas a entender o formato DD/MM/YYYY
+            df = pd.read_csv(caminho_arquivo, parse_dates=[COLUNA_HORA], dayfirst=True)
 
-            for index, row in df.iterrows():
-                # criando paciente para cada linha
-                paciente = Paciente(
-                    id_paciente=index,  # índice da linha como ID
-                    hora_chegada=row['TA_DH_PRE_ATENDIMENTO'],
-                    prob_alta=row['prediction_prob_alta'],
-                    prob_internacao=row['prediction_prob_ui'],
-                    prob_uti=row['prediction_prob_uti']
-                )
-                # Adiciona o novo objeto paciente à nossa lista principal
-                self.todos_os_pacientes.append(paciente)
+            self.todos_os_pacientes = [] # Limpa a lista antes de carregar
             
-            print(f"Sucesso! {len(self.todos_os_pacientes)} pacientes foram carregados na memória.")
+            for index, row in df.iterrows():
+                paciente = Paciente(
+                    id_paciente=index,
+                    hora_chegada=row[COLUNA_HORA],
+                    prob_alta=row[COLUNA_PROB_ALTA],
+                    prob_internacao=row[COLUNA_PROB_UI],
+                    prob_uti=row[COLUNA_PROB_UTI]
+                )
+                self.todos_os_pacientes.append(paciente)
+                    
+                print(f"Sucesso! {len(self.todos_os_pacientes)} pacientes carregados do arquivo.", icon="✅")
 
         except FileNotFoundError:
-            print(f"Erro: O arquivo '{caminho_arquivo}' não foi encontrado.")
+            print(f"Arquivo não encontrado em '{caminho_arquivo}'. Verifique o caminho.")
         except KeyError as e:
-            print(f"Erro: A coluna {e} não foi encontrada no arquivo Excel. Verifique os nomes das colunas.")
+            print(f"Erro de coluna: A coluna {e} não foi encontrada no CSV. Verifique o cabeçalho do arquivo.")
         except Exception as e:
-            print(f"Ocorreu um erro inesperado ao carregar o arquivo: {e}")
-        
-
+            print(f"Ocorreu um erro inesperado ao carregar os dados: {e}")
+            
     def atualizar_fila_para_horario(self, novo_horario: datetime):
         """
         Atualiza o estado da simulação para um horário específico.
