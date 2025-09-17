@@ -9,8 +9,9 @@ from utils.samples import obter_previsoes, previsao_pacientes_futuro
 
 class FrameValor(customtkinter.CTkFrame):
     """
-    Frame responsável por exibir um título e um valor numérico grande.
-    Exemplo de uso: mostrar total de pacientes, previsão de altas, etc.
+    Frame responsável por exibir um título e um valor numérico grande,
+    com a opção de alternar para exibir um gráfico genérico ao clicar
+    no botão do título.
     """
     def __init__(self, master, padx, pady, text, value):
         """
@@ -23,19 +24,87 @@ class FrameValor(customtkinter.CTkFrame):
         :param value: Valor exibido em destaque
         """
         super().__init__(master)
-        self.rotulo_titulo = customtkinter.CTkLabel(master=self, text=text, font=customtkinter.CTkFont(size=16, weight="bold"))
+        
+        # Estado inicial: True para valor, False para gráfico
+        self.mostrando_valor = True
+        
+        # Botão do título com o comando para alternar
+        self.rotulo_titulo = customtkinter.CTkButton(
+            master=self,
+            text=text,
+            font=customtkinter.CTkFont(size=16, weight="bold"),
+            fg_color="#B5B2B2",
+            text_color='black',
+            command=self.alternar_conteudo # Chama a função ao clicar
+        )
         self.rotulo_titulo.pack(side=tk.TOP, padx=padx, pady=(pady, 0))
-        self.rotulo_valor = customtkinter.CTkLabel(master=self, text=str(value), font=customtkinter.CTkFont(size=70, weight="bold"))
+        
+        # Rótulo para mostrar o valor
+        self.rotulo_valor = customtkinter.CTkLabel(
+            master=self,
+            text=str(value),
+            font=customtkinter.CTkFont(size=70, weight="bold")
+        )
         self.rotulo_valor.pack(side=tk.TOP, expand=True, padx=padx, pady=0)
-    
+        
+        # Frame para o gráfico (escondido inicialmente)
+        self.frame_grafico = customtkinter.CTkFrame(self)
+        self.frame_grafico.pack_forget() # Esconde o frame
+        
+        # Cria e plota o gráfico genérico
+        self._plotar_grafico_generico()
+
+    def _plotar_grafico_generico(self):
+        """
+        Cria e exibe um gráfico genérico dentro do frame_grafico.
+        Este método é interno, por isso o '_' no nome.
+        """
+        # Dados de exemplo para o gráfico
+        x = [1, 2, 3, 4, 5]
+        y = [2, 4, 1, 5, 3]
+        
+        # Cria a figura e o eixo do Matplotlib
+        self.fig, self.ax = plt.subplots(facecolor="#CFCDCD")
+        self.ax.plot(x, y)
+        self.ax.set_title("Gráfico Genérico")
+        self.ax.set_xlabel("Eixo X")
+        self.ax.set_ylabel("Eixo Y")
+        self.ax.tick_params(colors='black', which='both')
+        self.ax.set_xticks([0,5,10,15,20,23])
+        self.ax.set_facecolor("#CFCDCD")
+        self.ax.spines['bottom'].set_color('black')
+        self.ax.spines['top'].set_color("#CFCDCD")
+        self.ax.spines['left'].set_color('black')
+        self.ax.spines['right'].set_color("#CFCDCD")
+        
+        # Integra o gráfico no widget tkinter
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_grafico)
+        self.canvas_widget = self.canvas.get_tk_widget()
+        self.canvas_widget.pack(fill=tk.BOTH, expand=True)
+        
+    def alternar_conteudo(self):
+        """
+        Alterna entre exibir o valor numérico e o gráfico.
+        """
+        if self.mostrando_valor:
+            # Esconde o rótulo do valor e mostra o frame do gráfico
+            self.rotulo_valor.pack_forget()
+            self.frame_grafico.pack(side=tk.TOP, expand=True)
+        else:
+            # Esconde o frame do gráfico e mostra o rótulo do valor
+            self.frame_grafico.pack_forget()
+            self.rotulo_valor.pack(side=tk.TOP, expand=True)
+            
+        # Inverte o estado
+        self.mostrando_valor = not self.mostrando_valor
+
     def atualizar_valor(self, novo_valor):
         """
         Atualiza o valor exibido no frame.
-
-        :param novo_valor: Novo valor a ser exibido
         """
         self.rotulo_valor.configure(text=str(novo_valor))
 
+        
 class FramePrioridade(customtkinter.CTkFrame):
     """
     Frame que exibe informações de tempo médio para determinada prioridade,

@@ -10,7 +10,7 @@ def plot_probs_acumul(probs):
     plt.figure(figsize=(12,8))
 
     plt.subplot(2,3,1)
-    plt.plot(cdf[0], label="UTI", color=cores[0])
+    plt.bar(np.arange(len(pmf[0])),cdf[0], label="UTI", color=cores[0])
     plt.grid(visible=True, alpha=0.7)
     plt.legend()
 
@@ -18,12 +18,12 @@ def plot_probs_acumul(probs):
     plt.title('Distribuições de Probabilidade Cumulativa (CDF)')
     plt.xlabel('k')
     plt.ylabel('$P(X > k)$')
-    plt.plot(cdf[1], label="INTER", color=cores[1])
+    plt.bar(np.arange(len(pmf[0])),cdf[1], label="INTER", color=cores[1])
     plt.grid(visible=True, alpha=0.7)
     plt.legend()
 
     plt.subplot(2,3,3)
-    plt.plot(cdf[2], label="ALTAS", color=cores[2])
+    plt.bar(np.arange(len(pmf[0])),cdf[2], label="ALTAS", color=cores[2])
     plt.grid(visible=True, alpha=0.7)
     plt.legend()
 
