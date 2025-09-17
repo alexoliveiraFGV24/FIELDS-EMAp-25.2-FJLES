@@ -1,0 +1,160 @@
+import pandas as pd
+import numpy as np
+from datetime import datetime
+from typing import List, Dict
+from utils import probs
+
+
+# pacientes
+class Paciente:
+    """
+    Representa um único paciente com seus dados e probabilidades de destino.
+    """
+    def __init__(self, id_paciente: int, hora_chegada: datetime, prob_uti: float, prob_internacao: float, prob_alta: float):
+        # validando probs
+        if not (0.0 <= prob_uti <= 1.0 and 0.0 <= prob_internacao <= 1.0 and 0.0 <= prob_alta <= 1.0):
+            raise ValueError("As probabilidades devem estar entre 0 e 1.")
+
+        self.id_paciente = id_paciente
+        self.hora_chegada = hora_chegada
+        self.prob_uti = prob_uti
+        self.prob_internacao = prob_internacao
+        self.prob_alta = prob_alta
+
+    def __repr__(self):
+        return f"<Paciente id={self.id_paciente}, chegada={self.hora_chegada.strftime('%Y-%m-%d %H:%M')}>"
+
+
+# fila
+class FilaAtendimento:
+    """
+    gerencia a lista de pacientes que estão atualmente na fila.
+    """
+    def __init__(self):
+        # Inicializa a fila como uma lista vazia.
+        self.pacientes_na_fila: List[Paciente] = []
+    
+    def adicionar_paciente(self, paciente: Paciente):
+        """Adiciona um objeto Paciente à lista da fila."""
+        self.pacientes_na_fila.append(paciente)
+
+    def get_pacientes_atuais(self) -> List[Paciente]:
+        """Retorna a lista completa de pacientes que estão na fila."""
+        return self.pacientes_na_fila
+
+    def limpar_fila(self):
+        """Esvazia a fila, removendo todos os pacientes."""
+        self.pacientes_na_fila.clear()
+
+    def __len__(self):
+        """Permite usar len(fila) para saber o número de pacientes."""
+        return len(self.pacientes_na_fila)
+
+# simulação fila
+class SimuladorFila:
+    def __init__(self):
+        self.todos_os_pacientes: List[Paciente] = []
+        self.fila = FilaAtendimento()
+        self.hora_atual: datetime = None
+
+    def carregar_pacientes_do_excel(self, caminho_arquivo: str):
+        try:
+            df = pd.read_csv(caminho_arquivo, parse_dates=['hora_chegada'])
+
+            self.todos_os_pacientes = []
+
+            for index, row in df.iterrows():
+                # criando paciente para cada linha
+                paciente = Paciente(
+                    id_paciente=index,  # índice da linha como ID
+                    hora_chegada=row['TA_DH_PRE_ATENDIMENTO'],
+                    prob_alta=row['prediction_prob_alta'],
+                    prob_internacao=row['prediction_prob_ui'],
+                    prob_uti=row['prediction_prob_uti']
+                )
+                # Adiciona o novo objeto paciente à nossa lista principal
+                self.todos_os_pacientes.append(paciente)
+            
+            print(f"Sucesso! {len(self.todos_os_pacientes)} pacientes foram carregados na memória.")
+
+        except FileNotFoundError:
+            print(f"Erro: O arquivo '{caminho_arquivo}' não foi encontrado.")
+        except KeyError as e:
+            print(f"Erro: A coluna {e} não foi encontrada no arquivo Excel. Verifique os nomes das colunas.")
+        except Exception as e:
+            print(f"Ocorreu um erro inesperado ao carregar o arquivo: {e}")
+        
+
+    def atualizar_fila_para_horario(self, novo_horario: datetime):
+        """
+        Atualiza o estado da simulação para um horário específico.
+        """
+        self.hora_atual = novo_horario
+        
+        # 1. Usa o método que acabamos de criar para esvaziar a fila
+        self.fila.limpar_fila()
+        
+        # 2. Percorre a lista principal de TODOS os pacientes (que foi carregada do arquivo)
+        for paciente in self.todos_os_pacientes:
+            # 3. Se a hora de chegada do paciente for no passado ou presente...
+            if paciente.hora_chegada <= self.hora_atual:
+                # 4. ...adiciona ele na fila atual.
+                self.fila.adicionar_paciente(paciente)
+
+    def calcular_previsoes(self) -> Dict[str, float]:
+        pacientes_na_fila = self.fila.get_pacientes_atuais()
+
+        if not pacientes_na_fila:
+            # Retorna um dicionário com arrays vazios ou [1.] para P(X>=0)
+            return {'uti': np.array([1.]), 'internacao': np.array([1.]), 'alta': np.array([1.])}
+
+        pacientes_array = np.array([
+            [p.prob_uti, p.prob_internacao, p.prob_alta]
+            for p in pacientes_na_fila
+        ])
+
+        
+        # Vetores de probabilidades
+        probs_utis = pacientes_array[:, 0]
+        probs_internacao = pacientes_array[:, 1]
+        probs_altas = pacientes_array[:, 2]
+        
+        #Histogramas
+        dist_uti = np.array([1 - probs_utis[0], probs_utis[0]])
+        for p in probs_utis[1:]:
+            dist_uti = np.convolve(dist_uti, [1 - p, p])
+
+        dist_internacao = np.array([1 - probs_internacao[0], probs_internacao[0]])
+        for p in probs_internacao[1:]:
+            dist_internacao = np.convolve(dist_internacao, [1 - p, p])
+
+        
+        dist_altas = np.array([1 - probs_altas[0], probs_altas[0]])
+        for p in probs_altas[1:]:
+            dist_altas = np.convolve(dist_altas, [1 - p, p])
+
+        #cumulativas
+        dist_uti_cumulativa = np.cumsum(dist_uti[::-1])[::-1]
+        dist_internacao_cumulativa = np.cumsum(dist_internacao[::-1])[::-1]
+        dist_altas_cumulativa = np.cumsum(dist_altas[::-1])[::-1]
+
+        
+        return {
+            'uti': dist_uti_cumulativa,
+            'internacao': dist_internacao_cumulativa,
+            'alta': dist_altas_cumulativa
+        }
+
+# interface streamlit
+class PaginaFila:
+    def __init__(self, caminho_dados_pacientes: str):
+        self.simulador = SimuladorFila()
+        self.simulador.carregar_pacientes_do_excel(caminho_dados_pacientes)
+
+    def obter_estado_da_fila(self, horario_desejado: datetime) -> Dict[str, float]:
+        pass
+
+
+simulador = SimuladorFila()
+caminho_do_seu_arquivo = 'files/data/probabilidades.csv' 
+simulador.carregar_pacientes_do_csv(caminho_do_seu_arquivo)
