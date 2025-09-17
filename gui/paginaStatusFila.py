@@ -157,7 +157,7 @@ class ERVolumeFrame(customtkinter.CTkFrame):
         
         x = np.arange(24)
         y = pacientes_futuro.copy()
-        indices = np.array(range(tempo_atual - config.JANELA_TEMPO, tempo_atual)) % 24
+        indices = np.array(range(tempo_atual - config.JANELA_TEMPO, tempo_atual+1)) % 24
         cores = [config.COR_FUTURO for i in range(24)]
         for i in indices:
             y[i] = pacientes_passado[i]
@@ -211,9 +211,11 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
         """
         super().__init__(master, **kwargs)
         
-        self.n = 0
+        self.indice_paciente_atual = 0
         self.pacientes_passado = np.zeros(24)
         self.pacientes_futuro = np.zeros(24)
+
+        self.means = []
         
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
@@ -224,11 +226,12 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
         self.grid_rowconfigure(3, weight=1)
 
         small_pad = 10
-        self.horario_atual = 10
+        self.horario_atual = 14
         self.tempos_prioridade_base = [10, 10, 10, 10, 10] 
         self.cores_prioridade = ["#E53935", "#FFEB3B", "#FB8C00", "#004075", "#4CAF50"] 
 
-        internacao_pred, alta_pred, uti_pred = obter_previsoes(self.n)
+        previsoes, _, proximo_indice = obter_previsoes(self.indice_paciente_atual, self.horario_atual)
+        internacao_pred, alta_pred, uti_pred = previsoes
         total_pacientes = internacao_pred + alta_pred + uti_pred
 
         self.tp = FrameValor(master=self, padx=small_pad, pady=small_pad, text="Total de Pacientes", value=total_pacientes)
@@ -256,6 +259,8 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
 
         self.after(2000, self.atualizar_dados)
 
+        
+
     def atualizar_dados(self):
         """
         Atualiza os dados da página periodicamente:
@@ -264,9 +269,14 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
         - Atualização dos tempos médios
         - Atualização do gráfico
         """
-        self.n += np.random.randint(1,20)
-        internacao_pred, alta_pred, uti_pred = obter_previsoes(self.n)
+        
+        previsoes, cdf, proximo_indice = obter_previsoes(self.indice_paciente_atual, self.horario_atual)
+        internacao_pred, alta_pred, uti_pred = previsoes
+        self.means = cdf
+        self.indice_paciente_atual = proximo_indice
+
         total_pacientes = internacao_pred + alta_pred + uti_pred
+        
 
         self.tp.atualizar_valor(total_pacientes)
         self.lws.atualizar_valor(alta_pred)
@@ -282,4 +292,4 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
         self.pacientes_futuro = previsao_pacientes_futuro(self.pacientes_passado, self.pacientes_futuro, self.horario_atual, metric='ema', ema_alpha=0.5)
         self.erv.atualizar_grafico(self.horario_atual, self.pacientes_passado, self.pacientes_futuro)
 
-        self.after(2900 , self.atualizar_dados)
+        self.after(1000 , self.atualizar_dados)
