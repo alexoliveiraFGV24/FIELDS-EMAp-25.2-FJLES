@@ -57,7 +57,7 @@ class SimuladorFila:
         self.fila = FilaAtendimento()
         self.hora_atual: datetime = None
 
-    def carregar_pacientes_do_excel(self, caminho_arquivo: str):
+    def carregar_pacientes(self, caminho_arquivo: str):
         try:
             df = pd.read_csv(caminho_arquivo, parse_dates=['hora_chegada'])
 
@@ -91,21 +91,16 @@ class SimuladorFila:
         """
         self.hora_atual = novo_horario
         
-        # 1. Usa o método que acabamos de criar para esvaziar a fila
         self.fila.limpar_fila()
         
-        # 2. Percorre a lista principal de TODOS os pacientes (que foi carregada do arquivo)
         for paciente in self.todos_os_pacientes:
-            # 3. Se a hora de chegada do paciente for no passado ou presente...
             if paciente.hora_chegada <= self.hora_atual:
-                # 4. ...adiciona ele na fila atual.
                 self.fila.adicionar_paciente(paciente)
 
     def calcular_previsoes(self) -> Dict[str, float]:
         pacientes_na_fila = self.fila.get_pacientes_atuais()
 
         if not pacientes_na_fila:
-            # Retorna um dicionário com arrays vazios ou [1.] para P(X>=0)
             return {'uti': np.array([1.]), 'internacao': np.array([1.]), 'alta': np.array([1.])}
 
         pacientes_array = np.array([
@@ -151,10 +146,27 @@ class PaginaFila:
         self.simulador = SimuladorFila()
         self.simulador.carregar_pacientes_do_excel(caminho_dados_pacientes)
 
-    def obter_estado_da_fila(self, horario_desejado: datetime) -> Dict[str, float]:
-        pass
+    def obter_estado_da_fila(self, horario_desejado: datetime) -> Dict:
+        """
+        faz as chamadas ao simulador e retorna um dicionário 
+        com todos os dados prontos para serem exibidos.
+        """
+        self.simulador.atualizar_fila_para_horario(horario_desejado)
+
+        distribuicoes = self.simulador.calcular_distribuicao_convolucao()
 
 
-simulador = SimuladorFila()
-caminho_do_seu_arquivo = 'files/data/probabilidades.csv' 
-simulador.carregar_pacientes_do_csv(caminho_do_seu_arquivo)
+        num_pacientes_fila = len(self.simulador.fila)
+
+        return {
+            "num_pacientes": num_pacientes_fila,
+            "dist_uti": distribuicoes['uti'],
+            "dist_internacao": distribuicoes['internacao'],
+            "dist_alta": distribuicoes['alta'],
+        }
+
+
+if __name__ == "__main__":
+    simulador = SimuladorFila()
+    caminho_do_seu_arquivo = 'files/data/probabilidades.csv' 
+    simulador.carregar_pacientes_do_csv(caminho_do_seu_arquivo)
