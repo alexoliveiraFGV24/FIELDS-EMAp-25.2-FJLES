@@ -162,18 +162,19 @@ def previsao_convolucao(pacientes: np.ndarray, threshold:float=0, lim_leitos = F
 
     #converter de P(X=k) em P(X>k) 
 
-    dist_uti = np.cumsum(dist_uti[::-1])[::-1]
-
-    dist_altas = np.cumsum(dist_altas[::-1])[::-1]
-
-    dist_internacao = np.cumsum(dist_internacao[::-1])[::-1]
-
+    dist_uti_pmf = dist_uti.copy()
+    dist_internacao_pmf = dist_internacao.copy()
+    dist_altas_pmf = dist_altas.copy()
+    
+    # Converte de P(X=k) em P(X>k) (CDF)
+    dist_uti_cdf = np.cumsum(dist_uti_pmf[::-1])[::-1]
+    dist_altas_cdf = np.cumsum(dist_altas_pmf[::-1])[::-1]
+    dist_internacao_cdf = np.cumsum(dist_internacao_pmf[::-1])[::-1]
     # Finalizo a contagem de tempo
     t = time.time() - t
     
     # Retorno
-    return dist_uti, dist_internacao, dist_altas, t
-
+    return [[dist_uti_pmf, dist_internacao_pmf, dist_altas_pmf], [dist_uti_cdf, dist_internacao_cdf, dist_altas_cdf]]
 
 def previsao_rna_fft(pacientes: np.ndarray, utis: int=4, internacoes: int=4, altas: int=4, threshold:float=0):
 
@@ -235,3 +236,5 @@ def previsao_rna_fft(pacientes: np.ndarray, utis: int=4, internacoes: int=4, alt
     
     # Retorno
     return probs_utis, probs_internacoes, probs_altas, t
+
+

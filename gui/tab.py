@@ -1,6 +1,6 @@
 import customtkinter
-from paginaStatusFila import PaginaStatusHospital
-from paginaStatusPaciente import PaginaStatusPaciente
+from gui.paginaStatusFila import PaginaStatusHospital
+from gui.paginaStatusPaciente import PaginaStatusPaciente
 
 class MyTabView(customtkinter.CTkTabview):
     def __init__(self, master, **kwargs): 
