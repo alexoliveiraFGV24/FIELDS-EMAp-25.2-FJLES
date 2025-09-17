@@ -1,7 +1,6 @@
 import customtkinter
 import gui.config as config
 from gui.tab import MyTabView
-import tkinter as tk
 
 
 class App(customtkinter.CTk):

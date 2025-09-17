@@ -26,16 +26,6 @@ def obter_previsoes(n):
     return tuple(results_cdf)
 
 
-# def previsao_pacientes_futuro(pacientes_passado, pacientes_futuro, horario_atual):
-#     y = pacientes_futuro.copy()
-#     media = np.mean(pacientes_passado[:horario_atual+1])  # média até o horário atual
-    
-#     for i in range(1, 6):  # próximos 5 valores
-#         idx = (horario_atual + i) % 24
-#         y[idx] = media
-    
-#     return y
-
 def previsao_pacientes_futuro(
     pacientes_passado,
     pacientes_futuro,

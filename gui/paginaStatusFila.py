@@ -122,8 +122,6 @@ class FramePrioridade(customtkinter.CTkFrame):
         super().__init__(master, fg_color=cor)
         self.inner_frame = customtkinter.CTkFrame(master=self)
         self.inner_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10,ipady=0)
-        # self.rotulo_titulo = customtkinter.CTkLabel(master=self.inner_frame, text=text, font=customtkinter.CTkFont(size=14, weight="bold"))
-        # self.rotulo_titulo.pack(pady=(10, 0))
         frame_valor_unidade = customtkinter.CTkFrame(master=self.inner_frame, fg_color="transparent")
         frame_valor_unidade.pack(expand=True, pady=(0,0))
         self.rotulo_valor = customtkinter.CTkLabel(master=frame_valor_unidade, text=str(value), font=customtkinter.CTkFont(size=30, weight="bold"))
@@ -226,7 +224,7 @@ class ERVolumeFrame(customtkinter.CTkFrame):
         
         x = np.arange(24)
         y = pacientes_futuro.copy()
-        indices = np.array(range(tempo_atual - config.JANELA_TEMPO, tempo_atual)) % 24
+        indices = np.array(range(tempo_atual - config.JANELA_TEMPO, tempo_atual+1)) % 24
         cores = [config.COR_FUTURO for i in range(24)]
         for i in indices:
             y[i] = pacientes_passado[i]
@@ -351,4 +349,4 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
         self.pacientes_futuro = previsao_pacientes_futuro(self.pacientes_passado, self.pacientes_futuro, self.horario_atual, metric='ema', ema_alpha=0.5)
         self.erv.atualizar_grafico(self.horario_atual, self.pacientes_passado, self.pacientes_futuro)
 
-        self.after(2900 , self.atualizar_dados)
+        self.after(2000 , self.atualizar_dados)
