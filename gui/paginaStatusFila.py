@@ -16,96 +16,82 @@ class FrameValor(customtkinter.CTkFrame):
     def __init__(self, master, padx, pady, text, value):
         """
         Inicializa o frame com um título e valor.
-
-        :param master: Widget pai
-        :param padx: Espaçamento horizontal
-        :param pady: Espaçamento vertical
-        :param text: Texto do rótulo superior
-        :param value: Valor exibido em destaque
         """
         super().__init__(master)
-        
-        # Estado inicial: True para valor, False para gráfico
+        self.valor = 0
         self.mostrando_valor = True
         self.text = text
+        self.distribuicao = np.zeros(1)
         
-        # Botão do título com o comando para alternar
-        self.rotulo_titulo = customtkinter.CTkButton(
-            master=self,
-            text=self.text,
-            font=customtkinter.CTkFont(size=16, weight="bold"),
-            fg_color="#B5B2B2",
-            text_color='black',
-            command=self.alternar_conteudo # Chama a função ao clicar
-        )
+        self.rotulo_titulo = customtkinter.CTkButton(master=self, text=self.text, 
+                                                     font=customtkinter.CTkFont(size=16, weight="bold"), 
+                                                     fg_color="#B5B2B2", text_color='black', 
+                                                     command=self.alternar_conteudo)
         self.rotulo_titulo.pack(side=tk.TOP, padx=padx, pady=(pady, 0))
         
-        # Rótulo para mostrar o valor
-        self.rotulo_valor = customtkinter.CTkLabel(
-            master=self,
-            text=str(value),
-            font=customtkinter.CTkFont(size=70, weight="bold")
-        )
+        self.rotulo_valor = customtkinter.CTkLabel(master=self, text=str(value), 
+                                                     font=customtkinter.CTkFont(size=70, weight="bold"))
         self.rotulo_valor.pack(side=tk.TOP, expand=True, padx=padx, pady=0)
         
-        # Frame para o gráfico (escondido inicialmente)
         self.frame_grafico = customtkinter.CTkFrame(self)
-        self.frame_grafico.pack_forget() # Esconde o frame
         
-        # Cria e plota o gráfico genérico
-        self._plotar_grafico()
-
-    def _plotar_grafico(self):
-        """
-        Cria e exibe um gráfico genérico dentro do frame_grafico.
-        Este método é interno, por isso o '_' no nome.
-        """
-        # Dados de exemplo para o gráfico
-        x = [1, 2, 3, 4, 5]
-        y = [2, 4, 1, 5, 3]
-        
-        # Cria a figura e o eixo do Matplotlib
         self.fig, self.ax = plt.subplots(facecolor="#CFCDCD")
-        self.ax.plot(x, y)
-        self.ax.set_title("Gráfico Genérico")
-        self.ax.set_xlabel("Eixo X")
-        self.ax.set_ylabel("Eixo Y")
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_grafico)
+        self.canvas_widget = self.canvas.get_tk_widget()
+        self.canvas_widget.pack(fill=tk.BOTH, expand=True)
+
+    def plotar_grafico(self):
+        """
+        Atualiza o gráfico com a nova distribuição de dados.
+        """
+        self.ax.clear()  # Limpa o eixo anterior
+        self.ax.bar(0, 0, label=f"Valor Esperado: {self.valor}", color="#CFCDCD")
+        
+        self.ax.bar(np.arange(len(self.distribuicao)), self.distribuicao, color=config.COR_CATEGORIA[0])
+        self.ax.set_title('CDF')
+        self.ax.set_xlabel('k')
+        self.ax.set_ylabel('$P(X < k)$')
         self.ax.tick_params(colors='black', which='both')
         self.ax.set_facecolor("#CFCDCD")
         self.ax.spines['bottom'].set_color('black')
         self.ax.spines['top'].set_color("#CFCDCD")
         self.ax.spines['left'].set_color('black')
         self.ax.spines['right'].set_color("#CFCDCD")
-        
-        # Integra o gráfico no widget tkinter
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_grafico)
-        self.canvas_widget = self.canvas.get_tk_widget()
-        self.canvas_widget.pack(fill=tk.BOTH, expand=True)
-        
+        self.ax.legend(prop={'size': 14, 'weight': 'bold'}, labelcolor='black', frameon=False)
+        self.fig.tight_layout()
+        self.canvas.draw()
+    
     def alternar_conteudo(self):
         """
         Alterna entre exibir o valor numérico e o gráfico.
         """
-        if self.text == "Total de Pacientes": return
+        if self.text == "Total de Pacientes":
+            return
+        
         if self.mostrando_valor:
-            # Esconde o rótulo do valor e mostra o frame do gráfico
             self.rotulo_valor.pack_forget()
             self.frame_grafico.pack(side=tk.TOP, expand=True)
+            self.plotar_grafico()  # Chame a plotagem ao mostrar o gráfico
         else:
-            # Esconde o frame do gráfico e mostra o rótulo do valor
             self.frame_grafico.pack_forget()
             self.rotulo_valor.pack(side=tk.TOP, expand=True)
-            
-        # Inverte o estado
+        
         self.mostrando_valor = not self.mostrando_valor
 
     def atualizar_valor(self, novo_valor, nova_distribuicao=None):
         """
         Atualiza o valor exibido no frame.
         """
+        self.valor = novo_valor
         self.rotulo_valor.configure(text=str(novo_valor))
-        self.distribuicao = nova_distribuicao
+        if nova_distribuicao is not None:
+            self.distribuicao = nova_distribuicao
 
+    def atualizar(self, novo_valor, nova_distribuicao=None):
+        if nova_distribuicao is None:
+            nova_distribuicao = np.zeros(1)
+        
+        self.atualizar_valor(novo_valor, nova_distribuicao)
         
 class FramePrioridade(customtkinter.CTkFrame):
     """
@@ -276,18 +262,17 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
         """
         Inicializa a página de status do hospital.
-
-        :param master: Widget pai
-        :param kwargs: Argumentos adicionais do CTkFrame
         """
         super().__init__(master, **kwargs)
         
         self.indice_paciente_atual = 0
         self.pacientes_passado = np.zeros(24)
         self.pacientes_futuro = np.zeros(24)
-
         self.means = []
         
+        self.simulacao_pausada = False
+        self.after_id = None
+
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
         self.grid_columnconfigure(2, weight=1)
@@ -295,6 +280,7 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
         self.grid_rowconfigure(1, weight=1)
         self.grid_rowconfigure(2, weight=1)
         self.grid_rowconfigure(3, weight=1)
+        self.grid_rowconfigure(4, weight=0) # Nova linha para o botão de pausa
 
         small_pad = 10
         self.horario_atual = 14
@@ -327,10 +313,24 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
         self.mwt = FrameTempo(master=self, padx=small_pad, pady=small_pad, text="Tempo Médio de Espera", 
                               tempos_prioridade=self.tempos_prioridade_base, cores_prioridade=self.cores_prioridade)
         self.mwt.grid(column=2, row=3, columnspan=1, pady=config.FRAME_GAP, padx=config.FRAME_GAP, sticky="nsew")
-
-        self.after(2000, self.atualizar_dados)
-
         
+        # Botão para pausar a simulação
+        self.btn_pausa = customtkinter.CTkButton(
+            master=self,
+            text="Pausar Simulação",
+            command=self.alternar_simulacao
+        )
+        self.btn_pausa.grid(column=3, row=3, pady=config.FRAME_GAP, padx=config.FRAME_GAP, sticky="se")
+
+        self.after_id = self.after(2000, self.atualizar_dados)
+
+    def alternar_simulacao(self):
+        self.simulacao_pausada = not self.simulacao_pausada
+        if self.simulacao_pausada:
+            self.btn_pausa.configure(text="Continuar Simulação")
+        else:
+            self.btn_pausa.configure(text="Pausar Simulação")
+            self.atualizar_dados()
 
     def atualizar_dados(self):
         """
@@ -340,27 +340,38 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
         - Atualização dos tempos médios
         - Atualização do gráfico
         """
-        
+        if self.simulacao_pausada:
+            return
+
         previsoes, cdf, proximo_indice = obter_previsoes(self.indice_paciente_atual, self.horario_atual)
         internacao_pred, alta_pred, uti_pred = previsoes
+        internacao_cdf, alta_cdf, uti_cdf = tuple(cdf)
         self.means = cdf
         self.indice_paciente_atual = proximo_indice
 
         total_pacientes = internacao_pred + alta_pred + uti_pred
         
-
-        self.tp.atualizar_valor(total_pacientes)
-        self.lws.atualizar_valor(alta_pred)
-        self.ip.atualizar_valor(internacao_pred)
-        self.sod.atualizar_valor(uti_pred)
+        # Atualiza os dados dos frames
+        self.tp.atualizar(total_pacientes)
+        self.lws.atualizar(alta_pred, alta_cdf)
+        self.ip.atualizar(internacao_pred, internacao_cdf)
+        self.sod.atualizar(uti_pred, uti_cdf)
         
-        novos_tempos_espera = [np.random.randint(10, 30), np.random.randint(10, 30),np.random.randint(10, 30),np.random.randint(10, 30),np.random.randint(10, 30)]
+        # Chama a atualização do gráfico se ele estiver visível
+        if not self.lws.mostrando_valor:
+            self.lws.plotar_grafico()
+        if not self.ip.mostrando_valor:
+            self.ip.plotar_grafico()
+        if not self.sod.mostrando_valor:
+            self.sod.plotar_grafico()
+            
+        novos_tempos_espera = [np.random.randint(10, 30), np.random.randint(10, 30), np.random.randint(10, 30), np.random.randint(10, 30), np.random.randint(10, 30)]
         self.mtt.atualizar_tempos(novos_tempos_espera)
         self.mwt.atualizar_tempos(novos_tempos_espera)
 
         self.horario_atual = (self.horario_atual + 1) % 24
         self.pacientes_passado[self.horario_atual] = total_pacientes
-        self.pacientes_futuro = previsao_pacientes_futuro(self.pacientes_passado, self.pacientes_futuro, self.horario_atual, metric='ema', ema_alpha=0.5)
+        self.pacientes_futuro = previsao_pacientes_futuro(self.pacientes_passado, self.pacientes_futuro, self.horario_atual, metric='weighted',k=20, ema_alpha=0.5)
         self.erv.atualizar_grafico(self.horario_atual, self.pacientes_passado, self.pacientes_futuro)
 
-        self.after(1000 , self.atualizar_dados)
+        self.after_id = self.after(1000, self.atualizar_dados)
