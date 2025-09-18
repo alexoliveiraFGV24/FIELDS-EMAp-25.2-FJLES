@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import utils.probs as probs
+from utils import probs 
 
 
 def gerar_amostra(n:int, low:int=1, high:int=1001):
@@ -13,17 +13,29 @@ def gerar_amostra(n:int, low:int=1, high:int=1001):
     return pacientes
 
 
-def obter_previsoes(n):
-    """Gera valores fictícios de previsões para."""
-    data = pd.read_csv('files/data/probabilidades.csv')
-    
-    results_cdf = probs.previsao_convolucao(data[['prediction_prob_alta', 'prediction_prob_ui','prediction_prob_uti']][n:n+np.random.randint(1,20)].values)[1]
+data = pd.read_csv('files/data/probabilidades.csv')
+data_horarios = data[['TA_DH_PRE_ATENDIMENTO']].values
+data_probs = data[['prediction_prob_alta', 'prediction_prob_ui','prediction_prob_uti']].values
 
-    results_cdf[0] = len(results_cdf[0][results_cdf[0] > 0.8])  # Alta
-    results_cdf[1] = len(results_cdf[1][results_cdf[1] > 0.8])  # UI
-    results_cdf[2] = len(results_cdf[2][results_cdf[2] > 0.8])  # UTI
 
-    return tuple(results_cdf)
+def obter_previsoes(indice_paciente_atual, horario_atual):
+    """preenche os arrays de pacientes"""
+    indice_paciente_final = indice_paciente_atual
+    while (indice_paciente_final + 1 < len(data_horarios)):
+        proximo_horario = int(data_horarios[indice_paciente_final + 1][0].split()[1][0:2])
+        if proximo_horario != horario_atual:
+            break
+        indice_paciente_final += 1
+
+    # Extrair probabilidades para o bloco de pacientes do mesmo horário
+    bloco_probs = data_probs[indice_paciente_atual:indice_paciente_final + 1]
+
+    # Calcular previsões via convolução
+    _, results_cdf, mean_count = probs.previsao_convolucao(bloco_probs)
+
+    previsoes = [mean_count[1], mean_count[2], mean_count[0]]
+
+    return mean_count, results_cdf, indice_paciente_final + 1
 
 
 def previsao_pacientes_futuro(
@@ -134,4 +146,4 @@ def previsao_pacientes_futuro(
     return y
 
 if __name__ == "__main__":
-    print(obter_previsoes())
+    print(obter_previsoes(0, 14))
