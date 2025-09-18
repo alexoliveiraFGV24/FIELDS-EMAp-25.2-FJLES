@@ -27,11 +27,12 @@ class FrameValor(customtkinter.CTkFrame):
         
         # Estado inicial: True para valor, False para gráfico
         self.mostrando_valor = True
+        self.text = text
         
         # Botão do título com o comando para alternar
         self.rotulo_titulo = customtkinter.CTkButton(
             master=self,
-            text=text,
+            text=self.text,
             font=customtkinter.CTkFont(size=16, weight="bold"),
             fg_color="#B5B2B2",
             text_color='black',
@@ -52,9 +53,9 @@ class FrameValor(customtkinter.CTkFrame):
         self.frame_grafico.pack_forget() # Esconde o frame
         
         # Cria e plota o gráfico genérico
-        self._plotar_grafico_generico()
+        self._plotar_grafico()
 
-    def _plotar_grafico_generico(self):
+    def _plotar_grafico(self):
         """
         Cria e exibe um gráfico genérico dentro do frame_grafico.
         Este método é interno, por isso o '_' no nome.
@@ -70,7 +71,6 @@ class FrameValor(customtkinter.CTkFrame):
         self.ax.set_xlabel("Eixo X")
         self.ax.set_ylabel("Eixo Y")
         self.ax.tick_params(colors='black', which='both')
-        self.ax.set_xticks([0,5,10,15,20,23])
         self.ax.set_facecolor("#CFCDCD")
         self.ax.spines['bottom'].set_color('black')
         self.ax.spines['top'].set_color("#CFCDCD")
@@ -86,6 +86,7 @@ class FrameValor(customtkinter.CTkFrame):
         """
         Alterna entre exibir o valor numérico e o gráfico.
         """
+        if self.text == "Total de Pacientes": return
         if self.mostrando_valor:
             # Esconde o rótulo do valor e mostra o frame do gráfico
             self.rotulo_valor.pack_forget()
@@ -98,11 +99,12 @@ class FrameValor(customtkinter.CTkFrame):
         # Inverte o estado
         self.mostrando_valor = not self.mostrando_valor
 
-    def atualizar_valor(self, novo_valor):
+    def atualizar_valor(self, novo_valor, nova_distribuicao=None):
         """
         Atualiza o valor exibido no frame.
         """
         self.rotulo_valor.configure(text=str(novo_valor))
+        self.distribuicao = nova_distribuicao
 
         
 class FramePrioridade(customtkinter.CTkFrame):
