@@ -57,6 +57,7 @@ class FrameValor(customtkinter.CTkFrame):
         self.ax.spines['top'].set_color("#CFCDCD")
         self.ax.spines['left'].set_color('black')
         self.ax.spines['right'].set_color("#CFCDCD")
+        self.ax.grid(False)
         self.ax.legend(prop={'size': 14, 'weight': 'bold'}, labelcolor='black', frameon=False)
         self.fig.tight_layout()
         self.canvas.draw()
@@ -371,7 +372,7 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
 
         self.horario_atual = (self.horario_atual + 1) % 24
         self.pacientes_passado[self.horario_atual] = total_pacientes
-        self.pacientes_futuro = previsao_pacientes_futuro(self.pacientes_passado, self.pacientes_futuro, self.horario_atual, metric='weighted',k=20, ema_alpha=0.5)
+        self.pacientes_futuro = previsao_pacientes_futuro(self.pacientes_passado, self.pacientes_futuro, self.horario_atual, metric='weighted',k=8, ema_alpha=0.5)
         self.erv.atualizar_grafico(self.horario_atual, self.pacientes_passado, self.pacientes_futuro)
 
         self.after_id = self.after(1000, self.atualizar_dados)
