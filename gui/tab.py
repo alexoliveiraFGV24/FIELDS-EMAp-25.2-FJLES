@@ -14,5 +14,5 @@ class MyTabView(customtkinter.CTkTabview):
 
         #frames paciente
         self.pacientesFrame = PaginaStatusPaciente(master=self.tab("Pacientes"))
-        self.pacientesFrame.pack()
+        self.pacientesFrame.pack(expand=True, fill='both')
     
