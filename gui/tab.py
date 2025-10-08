@@ -12,6 +12,7 @@ class MyTabView(customtkinter.CTkTabview):
         self.hospitalStatusFrame = PaginaStatusHospital(master=self.tab("Status Fila Hospital"))
         self.hospitalStatusFrame.pack(fill="both", expand=True)
 
+        #frames paciente
         self.pacientesFrame = PaginaStatusPaciente(master=self.tab("Pacientes"))
         self.pacientesFrame.pack()
     
