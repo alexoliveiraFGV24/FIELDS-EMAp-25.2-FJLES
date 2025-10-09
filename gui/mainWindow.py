@@ -1,13 +1,14 @@
 import customtkinter
 import gui.config as config
 from gui.tab import MyTabView
+import gui.fonts
 
 
 class App(customtkinter.CTk):
     def __init__(self):
 
         super().__init__()
-    
+        gui.fonts.initialize_fonts()
         customtkinter.set_appearance_mode("Light")
         customtkinter.set_default_color_theme("green")
     
