@@ -3,8 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
+from matplotlib.ticker import MaxNLocator 
+
+from utils.samples import *
 import gui.config as config
-from utils.samples import obter_previsoes, previsao_pacientes_futuro
 
 
 class FrameValor(customtkinter.CTkFrame):
@@ -22,6 +24,7 @@ class FrameValor(customtkinter.CTkFrame):
         self.mostrando_valor = True
         self.text = text
         self.distribuicao = np.zeros(1)
+        self.color = config.dicio[self.text]
         
         self.rotulo_titulo = customtkinter.CTkButton(master=self, text=self.text, 
                                                      font=customtkinter.CTkFont(size=16, weight="bold"), 
@@ -35,19 +38,26 @@ class FrameValor(customtkinter.CTkFrame):
         
         self.frame_grafico = customtkinter.CTkFrame(self)
         
-        self.fig, self.ax = plt.subplots(facecolor="#CFCDCD")
+        # Ajusta a cor de fundo do Matplotlib
+        self.fig, self.ax = plt.subplots(facecolor="#CFCDCD") 
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_grafico)
         self.canvas_widget = self.canvas.get_tk_widget()
         self.canvas_widget.pack(fill=tk.BOTH, expand=True)
 
     def plotar_grafico(self):
         """
-        Atualiza o gráfico com a nova distribuição de dados.
+        Atualiza o gráfico com a nova distribuição de dados (CDF).
         """
         self.ax.clear()  # Limpa o eixo anterior
-        self.ax.bar(0, 0, label=f"Valor Esperado: {self.valor}", color="#CFCDCD")
         
-        self.ax.bar(np.arange(len(self.distribuicao)), self.distribuicao, color=config.COR_CATEGORIA[0])
+        # O valor aqui está sendo usado como rótulo do valor esperado/médio da distribuição
+        label_valor = self.valor if isinstance(self.valor, (int, float)) else np.sum(self.valor)
+        self.ax.bar(0, 0, label=f"Valor Esperado: {label_valor:.0f}", color="#CFCDCD")
+        
+        self.ax.bar(np.arange(len(self.distribuicao)), self.distribuicao, color=self.color)
+        
+        self.ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+        
         self.ax.set_title('CDF')
         self.ax.set_xlabel('k')
         self.ax.set_ylabel('$P(X < k)$')
@@ -84,7 +94,13 @@ class FrameValor(customtkinter.CTkFrame):
         Atualiza o valor exibido no frame.
         """
         self.valor = novo_valor
-        self.rotulo_valor.configure(text=str(novo_valor))
+        # Se for um array (Total de Pacientes), exibe a soma. Senão, exibe o valor
+        if isinstance(novo_valor, np.ndarray):
+            valor_display = int(np.sum(novo_valor))
+        else:
+            valor_display = int(novo_valor)
+            
+        self.rotulo_valor.configure(text=str(valor_display))
         if nova_distribuicao is not None:
             self.distribuicao = nova_distribuicao
 
@@ -94,6 +110,7 @@ class FrameValor(customtkinter.CTkFrame):
         
         self.atualizar_valor(novo_valor, nova_distribuicao)
         
+
 class FramePrioridade(customtkinter.CTkFrame):
     """
     Frame que exibe informações de tempo médio para determinada prioridade,
@@ -102,17 +119,11 @@ class FramePrioridade(customtkinter.CTkFrame):
     def __init__(self, master, text, value, cor):
         """
         Inicializa o frame de prioridade.
-
-        :param master: Widget pai
-        :param text: Texto do rótulo (não usado atualmente)
-        :param value: Valor inicial exibido
-        :param cor: Cor de fundo do frame
         """
         super().__init__(master, fg_color=cor)
         self.inner_frame = customtkinter.CTkFrame(master=self)
         self.inner_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10,ipady=0)
-        # self.rotulo_titulo = customtkinter.CTkLabel(master=self.inner_frame, text=text, font=customtkinter.CTkFont(size=14, weight="bold"))
-        # self.rotulo_titulo.pack(pady=(10, 0))
+        
         frame_valor_unidade = customtkinter.CTkFrame(master=self.inner_frame, fg_color="transparent")
         frame_valor_unidade.pack(expand=True, pady=(0,0))
         self.rotulo_valor = customtkinter.CTkLabel(master=frame_valor_unidade, text=str(value), font=customtkinter.CTkFont(size=30, weight="bold"))
@@ -123,8 +134,6 @@ class FramePrioridade(customtkinter.CTkFrame):
     def atualizar_valor(self, novo_valor):
         """
         Atualiza o valor exibido no frame.
-
-        :param novo_valor: Novo valor numérico (tempo em minutos)
         """
         self.rotulo_valor.configure(text=str(novo_valor))
 
@@ -136,13 +145,6 @@ class FrameTempo(customtkinter.CTkFrame):
     def __init__(self, master, padx, pady, text, tempos_prioridade, cores_prioridade):
         """
         Inicializa o frame de tempos médios.
-
-        :param master: Widget pai
-        :param padx: Espaçamento horizontal
-        :param pady: Espaçamento vertical
-        :param text: Texto do título
-        :param tempos_prioridade: Lista com tempos médios por prioridade
-        :param cores_prioridade: Lista com cores correspondentes
         """
         super().__init__(master)
         self.rotulo_titulo = customtkinter.CTkLabel(master=self, text=text, font=customtkinter.CTkFont(size=16, weight="bold"))
@@ -164,8 +166,6 @@ class FrameTempo(customtkinter.CTkFrame):
     def atualizar_tempos(self, novos_tempos):
         """
         Atualiza os valores de tempo em todos os frames de prioridade.
-
-        :param novos_tempos: Lista de novos tempos por prioridade
         """
         for i, frame in enumerate(self.frames_prioridade):
             frame.atualizar_valor(novos_tempos[i])
@@ -174,19 +174,13 @@ class FrameTempo(customtkinter.CTkFrame):
 class ERVolumeFrame(customtkinter.CTkFrame):
     """
     Frame responsável por exibir o gráfico de volume do pronto-socorro,
-    mostrando pacientes passados e previstos.
+    mostrando pacientes passados e previstos como um gráfico de barras empilhadas.
     """
-    def __init__(self, master, padx, pady, text, current_time=24, pacientes_passado=np.zeros(24), pacientes_futuro=np.zeros(24)):
+    def __init__(self, master, padx, pady, text, current_time=24, pacientes_passado=np.zeros((24, 3)), pacientes_futuro=np.zeros((24, 3))):
         """
         Inicializa o frame com gráfico de volume do PS.
-
-        :param master: Widget pai
-        :param padx: Espaçamento horizontal
-        :param pady: Espaçamento vertical
-        :param text: Texto do título
-        :param current_time: Hora atual (0-23)
-        :param pacientes_passado: Array com dados do passado
-        :param pacientes_futuro: Array com previsões
+        
+        OBS: pacientes_passado e pacientes_futuro são arrays 24x3: (Hora, Estado)
         """
         super().__init__(master)
         self.title_label = customtkinter.CTkLabel(master=self, text=text, font=customtkinter.CTkFont(size=16, weight="bold"))
@@ -194,68 +188,198 @@ class ERVolumeFrame(customtkinter.CTkFrame):
         
         self.current_time = current_time
         
-        self.fig, self.ax = plt.subplots(facecolor="#CFCDCD")
+        self.modo_visualizacao_idx = 0  # 0: Total, 1: Internação, 2: Alta, 3: UTI
+        self.MODOS = ["Total (Empilhado)", "Internação", "Alta", "UTI"]
+        self.pacientes_passado = pacientes_passado # Armazena para alternância
+        self.pacientes_futuro = pacientes_futuro # Armazena para alternância
+        
+        # Ajusta a cor de fundo do Matplotlib
+        self.fig, self.ax = plt.subplots(facecolor="#CFCDCD") 
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.draw()
         
+        self.canvas_and_button_frame = customtkinter.CTkFrame(master=self, fg_color='transparent')
+        self.canvas_and_button_frame.pack(expand=True, fill=tk.BOTH, padx=padx, pady=pady)
+        
         self.canvas_widget = self.canvas.get_tk_widget()
-        self.canvas_widget.pack(expand=True, fill=tk.BOTH, padx=padx, pady=pady)
+        self.canvas_widget.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
+
+        self.btn_alternar_categoria = customtkinter.CTkButton(
+            master=self.canvas_and_button_frame, 
+            text=f"Visualizar: {self.MODOS[self.modo_visualizacao_idx]}",
+            command=self.alternar_visualizacao,
+            font=customtkinter.CTkFont(size=12),
+            fg_color="#B5B2B2", text_color='black'
+        )
+        self.btn_alternar_categoria.pack(side=tk.BOTTOM, pady=(5, 0))
         
         self.plotar_grafico(current_time, pacientes_passado, pacientes_futuro)
 
+    def alternar_visualizacao(self):
+        """
+        Alterna o modo de visualização entre Total e as categorias individuais.
+        """
+        # Avança para o próximo modo, ciclando de 0 a 3
+        self.modo_visualizacao_idx = (self.modo_visualizacao_idx + 1) % len(self.MODOS)
+        
+        # Atualiza o texto do botão
+        self.btn_alternar_categoria.configure(text=f"Visualizar: {self.MODOS[self.modo_visualizacao_idx]}")
+        
+        # Redesenha o gráfico com o novo modo, usando os dados armazenados
+        self.plotar_grafico(self.current_time, self.pacientes_passado, self.pacientes_futuro)
+
+
     def plotar_grafico(self, tempo_atual, pacientes_passado, pacientes_futuro):
         """
-        Plota o gráfico de volume de pacientes no PS.
+        Plota o gráfico de volume de pacientes no PS como um gráfico de barras empilhadas ou individual,
+        centralizado no tempo atual e com rolagem circular.
 
-        :param tempo_atual: Hora atual
-        :param pacientes_passado: Dados históricos
-        :param pacientes_futuro: Dados previstos
+        :param tempo_atual: Hora atual (0-23)
+        :param pacientes_passado: Dados históricos (24x3)
+        :param pacientes_futuro: Dados previstos (24x3)
         """
         self.ax.clear()
         
-        x = np.arange(24)
-        y = pacientes_futuro.copy()
-        indices = np.array(range(tempo_atual - config.JANELA_TEMPO, tempo_atual+1)) % 24
-        cores = [config.COR_FUTURO for i in range(24)]
-        for i in indices:
-            y[i] = pacientes_passado[i]
-            cores[i]=config.COR_PASSADO
-        cores[tempo_atual] = config.COR_HORARIO_ATUAL
-
-        self.ax.bar(x, y, color=cores, width=0.8, align="center")
+        # Dimensões: [0] Internação, [1] Alta, [2] UTI
+        CATEGORIAS = ["Internação", "Alta", "UTI"] 
+        # Usando as 3 primeiras cores da config.COR_CATEGORIA para os estados
+        CORES_CATEGORIAS = config.COR_CATEGORIA[:3] 
         
-        # Adiciona a legenda manualmente para controlar o texto e cores
-        self.ax.bar(0, 0, color=config.COR_PASSADO, label="Passado")
-        self.ax.bar(0, 0, color=config.COR_FUTURO, label="Futuro")
-        self.ax.bar(0, 0, color=config.COR_HORARIO_ATUAL, label="Atual")
+        # 1. Preparar os dados combinados (Passado + Futuro)
+        dados_plot = pacientes_futuro.copy()
+        
+        # Identifica o intervalo do passado/histórico a ser mostrado
+        indices_passado = np.array(range(tempo_atual - config.JANELA_TEMPO + 1, tempo_atual + 1)) % 24
+        
+        for i in indices_passado:
+            # Substitui os dados futuros pelos dados passados para as horas históricas
+            dados_plot[i] = pacientes_passado[i]
+
+        # 2. Definir as cores por barra (Passado, Futuro, Atual)
+        cores_por_hora = [config.COR_FUTURO] * 24 # Cor padrão: Futuro
+        for i in indices_passado:
+            cores_por_hora[i] = config.COR_PASSADO # Cores do passado
+            
+        cores_por_hora[tempo_atual] = config.COR_HORARIO_ATUAL # Cor do horário atual
+        
+        # --- LÓGICA DE CENTRALIZAÇÃO CÍCLICA ---
+        JANELA_DE_VISUALIZACAO = 10 
+        metade_janela_esquerda = 5 # 5 horas antes do tempo atual
+        metade_janela_direita = 4  # 4 horas depois do tempo atual (total 10 barras: 5+1+4)
+        
+        # 1. Calcular os índices (horas do dia 0-23) que serão plotados
+        # O intervalo de índices brutos (coordenada x) que centralizam o tempo_atual
+        indices_brutos = np.arange(tempo_atual - metade_janela_esquerda, tempo_atual + metade_janela_direita + 1)
+        
+        # O índice real do array de dados (0-23) usando o operador módulo
+        indices_data = indices_brutos % 24
+        
+        # O valor do x (coordenada) que será plotado
+        x_plot = indices_brutos 
+        
+        # 2. Reorganizar os dados (plot_data, plot_colors) para o trecho visualizado
+        dados_plot_unrolled = dados_plot[indices_data]
+        cores_por_hora_unrolled = np.array(cores_por_hora)[indices_data]
+        
+        # Labels para os ticks (os horários reais que serão mostrados)
+        x_ticks_labels = indices_data
+
+        # Define quais categorias e cores serão usadas com base no modo
+        if self.modo_visualizacao_idx == 0:
+            # Modo Total (Empilhado)
+            categorias_a_plotar = CATEGORIAS
+            cores_a_usar = CORES_CATEGORIAS
+            bottoms = np.zeros(len(x_plot)) # Usar bottoms para empilhar
+            titulo_grafico = "Total (Empilhado)"
+            
+        else:
+            # Modos Individuais (1: Internação, 2: Alta, 3: UTI)
+            idx_categoria = self.modo_visualizacao_idx - 1 # 0, 1 ou 2
+            categoria_selecionada = CATEGORIAS[idx_categoria]
+            
+            # Apenas uma categoria para plotar
+            categorias_a_plotar = [categoria_selecionada]
+            cores_a_usar = [CORES_CATEGORIAS[idx_categoria]]
+            
+            # Cria uma matriz de dados onde apenas a categoria selecionada tem valores
+            # Esta matriz substitui dados_plot_unrolled para esta plotagem
+            dados_plot_individual = np.zeros_like(dados_plot_unrolled)
+            # Copia os valores da categoria selecionada para a primeira coluna da matriz
+            dados_plot_individual[:, 0] = dados_plot_unrolled[:, idx_categoria] 
+            dados_plot_unrolled = dados_plot_individual # Usa a matriz individual para o loop
+            
+            bottoms = np.zeros(len(x_plot)) # Não usar bottoms para barras simples
+            titulo_grafico = categoria_selecionada
+            
+        # 3. Plotar as barras
+        # O loop só rodará 1 vez no modo individual e 3 vezes no modo total
+        for i, categoria in enumerate(categorias_a_plotar):
+            valores = dados_plot_unrolled[:, i] # Usa a coluna 0 no modo individual
+            
+            # Plota as barras da categoria
+            barras = self.ax.bar(x_plot, valores, bottom=bottoms, color=cores_a_usar[i], width=0.6, align="center")
+            
+            # Pinta a borda da barra com a cor de status (Passado/Futuro/Atual)
+            for j, bar in enumerate(barras):
+                #bar.set_edgecolor(cores_por_hora_unrolled[j]) 
+                bar.set_linewidth(6) # Define a espessura da linha de borda para destacar
+            
+            barras[len(barras)//2].set_edgecolor(cores_por_hora_unrolled[len(barras)//2])
+
+            # Adiciona a entrada da categoria na legenda
+            self.ax.bar(0, 0, color='none', edgecolor=cores_a_usar[i], linewidth=10, label=categoria)
+            
+            # Atualiza o `bottom` SOMENTE no modo Total
+            if self.modo_visualizacao_idx == 0:
+                bottoms += valores
+
+        # 4. Adicionar a legenda de status (Passado/Futuro/Atual) e configurações
+        # self.ax.bar(0, 0, color='none', edgecolor=config.COR_PASSADO, linewidth=10, label="Passado")
+        # self.ax.bar(0, 0, color='none', edgecolor=config.COR_FUTURO, linewidth=10, label="Futuro")
+        self.ax.bar(0, 0, color='none', edgecolor=config.COR_HORARIO_ATUAL, linewidth=10, label="Atual")
 
         # Configurações do eixo e legenda
-        self.ax.set_xlabel(f'Horário do Dia: {tempo_atual}h', color='black', fontsize=16)
+        self.ax.set_title(f"Volume do PS - {titulo_grafico}") # TÍTULO DINÂMICO
+        self.ax.set_xlabel(f'Horário do Dia: {tempo_atual:02d}h', color='black', fontsize=16)
         self.ax.set_ylabel("Ocorrências", color='black', fontsize=16)
-        self.ax.set_xticks(np.arange(0, 25, 5))
+        
+        # Força o eixo Y a mostrar apenas valores inteiros
+        self.ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+
+        # Define os ticks no eixo X
+        self.ax.set_xticks(x_plot)
+        self.ax.set_xticklabels([f"{h:02d}" for h in x_ticks_labels])
+        
+        # Centraliza o tempo atual
+        x_min_plot = x_plot[0] - 0.5
+        x_max_plot = x_plot[-1] + 0.5
+        self.ax.set_xlim(x_min_plot, x_max_plot) 
+
         self.ax.tick_params(colors='black', which='both')
-        self.ax.set_xticks([0,5,10,15,20,23])
         self.ax.set_facecolor("#CFCDCD")
         self.ax.spines['bottom'].set_color('black')
         self.ax.spines['top'].set_color("#CFCDCD")
         self.ax.spines['left'].set_color('black')
         self.ax.spines['right'].set_color("#CFCDCD")
-        self.ax.legend(prop={'size': 14, 'weight': 'bold'}, labelcolor='black', frameon=False)
-        self.fig.tight_layout()
+        
+        # Coloca a legenda fora do gráfico para não obstruir as barras
+        self.ax.legend(prop={'size': 10, 'weight': 'bold'}, labelcolor='black', frameon=False, loc='upper left', bbox_to_anchor=(1, 1))
+
+        self.fig.tight_layout(rect=[0, 0, 0.9, 1]) # Ajusta o layout para acomodar a legenda
         self.canvas.draw()
     
     def atualizar_grafico(self, novo_tempo_atual, pacientes_passado, pacientes_futuro):
         """
         Atualiza o gráfico com novos dados.
-
-        :param novo_tempo_atual: Novo horário atual
-        :param pacientes_passado: Dados históricos
-        :param pacientes_futuro: Dados previstos
         """
+        self.current_time = novo_tempo_atual # Armazena o tempo atual
+        self.pacientes_passado = pacientes_passado # Armazena os dados
+        self.pacientes_futuro = pacientes_futuro # Armazena os dados
         self.plotar_grafico(novo_tempo_atual, pacientes_passado, pacientes_futuro)
 
 
 class PaginaStatusHospital(customtkinter.CTkFrame):
+# ... (o restante da classe PaginaStatusHospital permanece inalterado) ...
     """
     Página principal que exibe os status do hospital,
     incluindo totais de pacientes, previsões e gráficos.
@@ -267,8 +391,8 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
         super().__init__(master, **kwargs)
         
         self.indice_paciente_atual = 0
-        self.pacientes_passado = np.zeros(24)
-        self.pacientes_futuro = np.zeros(24)
+        self.pacientes_passado = np.zeros((24, 3)) # ALTERADO: Array 24x3 para [Hora, Estado]
+        self.pacientes_futuro = np.zeros((24, 3)) # ALTERADO: Array 24x3 para [Hora, Estado]
         self.means = []
         
         self.simulacao_pausada = False
@@ -281,18 +405,21 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
         self.grid_rowconfigure(1, weight=1)
         self.grid_rowconfigure(2, weight=1)
         self.grid_rowconfigure(3, weight=1)
-        self.grid_rowconfigure(4, weight=0) # Nova linha para o botão de pausa
+        self.grid_rowconfigure(4, weight=0) 
 
         small_pad = 10
         self.horario_atual = 14
         self.tempos_prioridade_base = [10, 10, 10, 10, 10] 
         self.cores_prioridade = ["#E53935", "#FFEB3B", "#FB8C00", "#004075", "#4CAF50"] 
 
+        # Dados iniciais
         previsoes, _, proximo_indice = obter_previsoes(self.indice_paciente_atual, self.horario_atual)
         internacao_pred, alta_pred, uti_pred = previsoes
-        total_pacientes = internacao_pred + alta_pred + uti_pred
+        # total_pacientes agora é um array 1x3: [Internação, Alta, UTI]
+        total_pacientes_estados = np.array([internacao_pred, alta_pred, uti_pred]) 
+        total_pacientes_soma = np.sum(total_pacientes_estados)
 
-        self.tp = FrameValor(master=self, padx=small_pad, pady=small_pad, text="Total de Pacientes", value=total_pacientes)
+        self.tp = FrameValor(master=self, padx=small_pad, pady=small_pad, text="Total de Pacientes", value=total_pacientes_soma)
         self.tp.grid(column=0, row=0, pady=config.FRAME_GAP, padx=config.FRAME_GAP, sticky="nsew")
 
         self.lws = FrameValor(master=self, padx=small_pad, pady=small_pad, text="Previsão de Alta", value=alta_pred)
@@ -304,7 +431,9 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
         self.sod = FrameValor(master=self, padx=small_pad, pady=small_pad, text="Previsão de UTI", value=uti_pred)
         self.sod.grid(column=0, row=3, pady=config.FRAME_GAP, padx=config.FRAME_GAP, sticky="nsew")
 
-        self.erv = ERVolumeFrame(master=self, padx=small_pad, pady=small_pad, text="Volume do PS", current_time=self.horario_atual)
+        # Passa os arrays 24x3 para o Frame
+        self.erv = ERVolumeFrame(master=self, padx=small_pad, pady=small_pad, text="Volume do PS", current_time=self.horario_atual,
+                                 pacientes_passado=self.pacientes_passado, pacientes_futuro=self.pacientes_futuro)
         self.erv.grid(column=1, row=0, columnspan=2, rowspan=3, pady=config.FRAME_GAP, padx=config.FRAME_GAP, sticky="nsew")
         
         self.mtt = FrameTempo(master=self, padx=small_pad, pady=small_pad, text="Tempo Médio de Tratamento", 
@@ -321,7 +450,8 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
             text="Pausar Simulação",
             command=self.alternar_simulacao
         )
-        self.btn_pausa.grid(column=3, row=3, pady=config.FRAME_GAP, padx=config.FRAME_GAP, sticky="se")
+        # O botão foi movido para a coluna 0, linha 4 para não conflitar, ou ajustado na coluna 2
+        self.btn_pausa.grid(column=2, row=4, pady=config.FRAME_GAP, padx=config.FRAME_GAP, sticky="se") 
 
         self.after_id = self.after(2000, self.atualizar_dados)
 
@@ -335,11 +465,7 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
 
     def atualizar_dados(self):
         """
-        Atualiza os dados da página periodicamente:
-        - Novas previsões de pacientes
-        - Atualização dos frames de valores
-        - Atualização dos tempos médios
-        - Atualização do gráfico
+        Atualiza os dados da página periodicamente.
         """
         if self.simulacao_pausada:
             return
@@ -350,10 +476,12 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
         self.means = cdf
         self.indice_paciente_atual = proximo_indice
 
-        total_pacientes = internacao_pred + alta_pred + uti_pred
+        # Total de pacientes por estado (Internação, Alta, UTI) para o horário atual
+        total_pacientes_estados = np.array([internacao_pred, alta_pred, uti_pred])
+        total_pacientes_soma = np.sum(total_pacientes_estados)
         
         # Atualiza os dados dos frames
-        self.tp.atualizar(total_pacientes)
+        self.tp.atualizar(total_pacientes_soma) # Usa a soma para o Total de Pacientes
         self.lws.atualizar(alta_pred, alta_cdf)
         self.ip.atualizar(internacao_pred, internacao_cdf)
         self.sod.atualizar(uti_pred, uti_cdf)
@@ -370,9 +498,16 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
         self.mtt.atualizar_tempos(novos_tempos_espera)
         self.mwt.atualizar_tempos(novos_tempos_espera)
 
+        # 1. Avança o horário
         self.horario_atual = (self.horario_atual + 1) % 24
-        self.pacientes_passado[self.horario_atual] = total_pacientes
-        self.pacientes_futuro = previsao_pacientes_futuro(self.pacientes_passado, self.pacientes_futuro, self.horario_atual, metric='weighted',k=8, ema_alpha=0.5)
+        
+        # 2. Atualiza o array de dados passados (Histórico)
+        self.pacientes_passado[self.horario_atual] = total_pacientes_estados
+        
+        # 3. Atualiza o array de previsões futuras (24x3)
+        self.pacientes_futuro = previsao_pacientes_futuro(self.pacientes_passado, self.pacientes_futuro, self.horario_atual, metric='mean')
+        
+        # 4. Atualiza o gráfico de volume do PS
         self.erv.atualizar_grafico(self.horario_atual, self.pacientes_passado, self.pacientes_futuro)
 
         self.after_id = self.after(1000, self.atualizar_dados)
