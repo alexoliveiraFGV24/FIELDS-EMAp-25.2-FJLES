@@ -203,7 +203,7 @@ class PaginaStatusPaciente(customtkinter.CTkFrame):
         self.dashboard_frame.grid_columnconfigure(0, weight=2)
         self.dashboard_frame.grid_columnconfigure(1, weight=1)
 
-        # -- Coluna Esquerda --
+        # -- coluna esquerda --
         self.card_info = CardInfoPaciente(self.dashboard_frame, fg_color="white", text_color="black")
         self.card_info.grid(row=0, column=0, padx=10, pady=(10,2), sticky="ew")
 
@@ -221,7 +221,7 @@ class PaginaStatusPaciente(customtkinter.CTkFrame):
         self.card_relatorio = CardRelatorioPaciente(self.dashboard_frame, fg_color="white")
         self.card_relatorio.grid(row=3, column=0, padx=10, pady=10, sticky="ew")
 
-        # -- Coluna Direita --
+        # -- coluna direita --
         self.card_previsto = CardPrevisto(self.dashboard_frame, fg_color="white")
         self.card_previsto.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
         
