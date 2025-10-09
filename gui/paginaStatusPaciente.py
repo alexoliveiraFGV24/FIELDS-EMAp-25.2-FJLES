@@ -246,7 +246,7 @@ class PaginaStatusPaciente(customtkinter.CTkFrame):
             },
             "Lucas Pereira (2 anos)": {
                 "info": {"nome": "Lucas Pereira", "idade": 2, "sexo": "Masculino", "peso": 12.5},
-                "triagem": {"risco": "Laranja (Preferencial)", "cor": "#E67E22", "alergia": "Nenhuma", "queixa": "Dificuldade para respirar e chiado no peito."},
+                "triagem": {"risco": "Laranja (Preferencial)", "cor": "#E67E22", "alergia": "Nenhuma", "queixa": "Dificuldade para respirar e chiado no peito.", "dor": "Não informado"},
                 "relatorio": {"temperatura": 37.9, "saturacao": 93, "saturacao_ar": 94, "frequencia_cardiaca": 145, "frequencia_respiratoria": 45, "dor": "N/A", "pressao_sistolica": 95, "pressao_diastolica": 60, "perfusao": 1},
                 "previsao": {"uti": "18.0%", "internacao": "75.0%", "alta": "7.0%"},
                 "sintomas": ["Tosse", "Chiado"],
