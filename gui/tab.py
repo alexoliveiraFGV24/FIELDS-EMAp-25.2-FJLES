@@ -1,7 +1,7 @@
 import customtkinter
 from gui.paginaStatusFila import PaginaStatusHospital
 from gui.paginaStatusPaciente import PaginaStatusPaciente
-from gui.paginaStatusOperacoes import PaginaStatusOperacoes
+from gui.paginaComparacaoTemporal import PaginaComparacaoTemporal
 
 
 
@@ -11,7 +11,7 @@ class MyTabView(customtkinter.CTkTabview):
 
         self.add("Status Fila Hospital")
         self.add("Pacientes")
-        self.add("Operações")
+        self.add("Temporal")
 
         # Frames fila
         self.hospitalStatusFrame = PaginaStatusHospital(master=self.tab("Status Fila Hospital"))
@@ -22,7 +22,7 @@ class MyTabView(customtkinter.CTkTabview):
         self.pacientesFrame.pack(expand=True, fill='both')
 
         #Frames operação
-        self.pacientesFrame = PaginaStatusOperacoes(master=self.tab("Operações"))
+        self.pacientesFrame = PaginaComparacaoTemporal(master=self.tab("Temporal"))
         self.pacientesFrame.pack(expand=True, fill='both')
 
 

@@ -47,7 +47,7 @@ class CardVolumeProntoSocorro(customtkinter.CTkFrame):
         super().__init__(master, **kwargs)
 
 
-class PaginaStatusOperacoes(customtkinter.CTkFrame):
+class PaginaComparacaoTemporal(customtkinter.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, fg_color="#F2F2F2", **kwargs)
 
