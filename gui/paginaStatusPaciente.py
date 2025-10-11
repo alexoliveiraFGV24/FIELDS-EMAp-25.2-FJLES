@@ -247,7 +247,7 @@ class PaginaStatusPaciente(customtkinter.CTkFrame):
             "Lucas Pereira (2 anos)": {
                 "info": {"nome": "Lucas Pereira", "idade": 2, "sexo": "Masculino", "peso": 12.5},
                 "triagem": {"risco": "Laranja (Preferencial)", "cor": "#E67E22", "alergia": "Nenhuma", "queixa": "Dificuldade para respirar e chiado no peito.", "dor": "Não informado"},
-                "relatorio": {"temperatura": 37.9, "saturacao": 93, "saturacao_ar": 94, "frequencia_cardiaca": 145, "frequencia_respiratoria": 45, "dor": "N/A", "pressao_sistolica": 95, "pressao_diastolica": 60, "perfusao": 1},
+                "relatorio": {"temperatura": 37.9, "saturacao": 93, "saturacao_ar": 94, "frequencia_cardiaca": 145, "frequencia_respiratoria": 45, "dor": "3/10", "pressao_sistolica": 95, "pressao_diastolica": 60, "perfusao": 1},
                 "previsao": {"uti": "18.0%", "internacao": "75.0%", "alta": "7.0%"},
                 "sintomas": ["Tosse", "Chiado"],
                 "evolucao": ["02/10/2025 11:30 - Chegada com desconforto respiratório", "02/10/2025 11:32 - Triagem e encaminhamento para sala de emergência", "02/10/2025 11:40 - Iniciado oxigênio e medicação inalatória"]

@@ -49,12 +49,13 @@ def previsao_pacientes_futuro(
     weights=None
 ):
     """
-    Preenche os próximos 5 índices (circular) do vetor pacientes_futuro
-    usando a métrica escolhida.
+    Preenche os próximos 5 índices (circular) do vetor pacientes_futuro (24x3)
+    usando a métrica escolhida, aplicando a previsão separadamente para cada estado
+    do paciente (coluna).
 
     parâmetros:
-    - pacientes_passado: array (24,) com dados até agora (passado/historico)
-    - pacientes_futuro: array (24,) com valores futuros (ás vezes zeros)
+    - pacientes_passado: array (24, 3) com dados até agora (passado/historico)
+    - pacientes_futuro: array (24, 3) com valores futuros (ás vezes zeros)
     - horario_atual: int 0..23
     - metric: "mean"|"median"|"ema"|"weighted"|"rolling"|"trend"
     - include_future: se True, cada previsão é incorporada antes da próxima (forecast acumulado)
@@ -62,87 +63,102 @@ def previsao_pacientes_futuro(
     - ema_alpha: alpha da EMA (0<alpha<=1), maior alpha → mais peso no recente
     - weights: array de pesos (se metric == "weighted"), comprimento usado automaticamente
     """
-    assert len(pacientes_passado) == 24 and len(pacientes_futuro) == 24
+    assert pacientes_passado.shape == (24, 3) and pacientes_futuro.shape == (24, 3)
+    
+    # O resultado y será um array 24x3
     y = pacientes_futuro.copy().astype(float)
-
-    # helper para pegar últimos n valores do "histórico conhecido"
-    def get_recent_values(include_predicted=False, n= k):
-        vals = []
-        # coletar da hora 0 até horario_atual inclusive -> histórico conhecido
-        for i in range(horario_atual + 1):
-            vals.append(pacientes_passado[i])
-        # se incluir previsões já feitas, buscar em y (apenas índices > horario_atual)
-        if include_predicted:
-            # pegar valores já preenchidos em y que correspondem a previsões feitas
-            # isto assume que previsões já foram colocadas em y
-            # não filtramos zeros automaticamente; assumimos y contém previsões reais
-            for i in range(24):
-                # adicionar previsões que estão depois do horario_atual (em tempo circular)
-                # mas aqui só queremos os últimos n valores no tempo — montar sequência temporal:
-                pass
-        # para simplicidade nas métricas, retornamos a sequência histórica completa até agora
-        return np.array(vals)
-
-    # Construir base de dados para a métrica:
-    history = np.array([pacientes_passado[i] for i in range(horario_atual+1)])
-
-    # função para obter ponto de previsão único dependendo da métrica
-    def predict_point(history_vals, produced_vals):
-        # history_vals: numpy array com dados históricos (0..horario_atual)
-        # produced_vals: lista com previsões já geradas (se include_future True)
+    
+    # --------------------------------------------------------------------------
+    # Sub-função de previsão para um array 1D (uma única coluna/estado)
+    # Esta função encapsula toda a lógica original da métrica.
+    # --------------------------------------------------------------------------
+    def predict_single_column(column_history_vals, produced_vals):
+        """
+        Calcula um único ponto de previsão para uma série temporal (coluna).
+        """
+        
+        # history_vals: numpy array com dados históricos (0..horario_atual) de UMA coluna
+        # produced_vals: lista com previsões já geradas para a coluna
+        
         if metric == "mean":
-            base = np.mean(np.concatenate([history_vals, np.array(produced_vals)]) if include_future and produced_vals else history_vals)
-            return base
+            seq = np.concatenate([column_history_vals, np.array(produced_vals)]) if include_future and produced_vals else column_history_vals
+            return np.mean(seq).astype(np.uint8)
+        
         elif metric == "median":
-            base = np.median(np.concatenate([history_vals, np.array(produced_vals)]) if include_future and produced_vals else history_vals)
-            return base
+            seq = np.concatenate([column_history_vals, np.array(produced_vals)]) if include_future and produced_vals else column_history_vals
+            return np.median(seq)
+        
         elif metric == "ema":
-            # EMA sobre history then incorporate produced_vals if include_future
-            seq = np.concatenate([history_vals, np.array(produced_vals)]) if include_future and produced_vals else history_vals
-            # calcular EMA manualmente
+            seq = np.concatenate([column_history_vals, np.array(produced_vals)]) if include_future and produced_vals else column_history_vals
+            if not seq.size: return 0.0
+            
             ema = seq[0]
             for v in seq[1:]:
                 ema = ema * (1 - ema_alpha) + v * ema_alpha
             return ema
+        
         elif metric == "weighted":
-            seq = np.concatenate([history_vals, np.array(produced_vals)]) if include_future and produced_vals else history_vals
+            seq = np.concatenate([column_history_vals, np.array(produced_vals)]) if include_future and produced_vals else column_history_vals
+            if not seq.size: return 0.0
+
             n = len(seq)
             if weights is None:
                 # pesos decrescentes lineares: mais peso para o mais recente
-                w = np.arange(1, n+1)[::-1]  # ex: [n, n-1, ..., 1]
+                w = np.arange(1, n+1)[::-1] 
             else:
-                w = np.array(weights[-n:])  # pega últimos n pesos dados
-            return np.dot(seq, w) / np.sum(w)
+                w = np.array(weights[-n:]) 
+            
+            y = np.dot(seq, w) / np.sum(w)
+
+            
+            return y.astype(np.uint8)
+        
         elif metric == "rolling":
-            seq = np.concatenate([history_vals, np.array(produced_vals)]) if include_future and produced_vals else history_vals
+            seq = np.concatenate([column_history_vals, np.array(produced_vals)]) if include_future and produced_vals else column_history_vals
+            if not seq.size: return 0.0
+            
             window = min(k, len(seq))
             return np.mean(seq[-window:])
+        
         elif metric == "trend":
-            seq = np.concatenate([history_vals, np.array(produced_vals)]) if include_future and produced_vals else history_vals
+            seq = np.concatenate([column_history_vals, np.array(produced_vals)]) if include_future and produced_vals else column_history_vals
             n = len(seq)
             if n < 2:
-                return float(seq[-1])
-            # x: 0..n-1, y: seq, ajustar reta e extrapolar 1 passo à frente
+                return float(seq[-1]) if seq.size > 0 else 0.0
+            
             x = np.arange(n)
             coeffs = np.polyfit(x, seq, 1)  # linear
             slope, intercept = coeffs[0], coeffs[1]
             # previsão para o próximo ponto = y(n) where x = n
             return slope * n + intercept
+        
         else:
             raise ValueError("Métrica desconhecida.")
+    # --------------------------------------------------------------------------
 
-    # gerar 5 previsões sequenciais (com ou sem usar previsões anteriores)
-    produced = []
-    for i in range(1, 6):
-        idx = (horario_atual + i) % 24
-        val = predict_point(history, produced)
-        y[idx] = val
-        produced.append(val)
-        if include_future:
-            # se incluímos previsões nos cálculos seguintes, também podemos considerá-las
-            # nada a fazer: produced já contém elas
-            pass
-
+    # 3. Iterar sobre as 3 colunas (estados) e aplicar a previsão em cada uma.
+    for col in range(3):
+        
+        # 3.1. Obter o histórico de dados (uma coluna, até a hora atual)
+        # history é um array 1D com os valores da coluna 'col' da hora 0 até horario_atual.
+        history_col = np.array([pacientes_passado[i, col] for i in range(horario_atual + 1)])
+        
+        # 3.2. Gerar 5 previsões sequenciais para esta coluna
+        produced_col = []
+        for i in range(1, 6):
+            idx = (horario_atual + i) % 24
+            
+            # Calcular o próximo ponto de previsão usando a sub-função
+            val = predict_single_column(history_col, produced_col)
+            
+            # Colocar o valor previsto no array de resultados na posição [hora, coluna]
+            y[idx, col] = max(0, val) # Garantir que o volume não seja negativo
+            
+            # Se a previsão é cumulativa (include_future=True), guarde o valor para o próximo cálculo
+            if include_future:
+                produced_col.append(val)
+                
+    # Retorna o array 24x3 com as previsões futuras preenchidas
     return y
 
 if __name__ == "__main__":
