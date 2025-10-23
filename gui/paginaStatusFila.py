@@ -242,8 +242,10 @@ class ERVolumeFrame(customtkinter.CTkFrame):
         
         # Dimensões: [0] Internação, [1] Alta, [2] UTI
         CATEGORIAS = ["Internação", "Alta", "UTI"] 
-        # Usando as 3 primeiras cores da config.COR_CATEGORIA para os estados
-        CORES_CATEGORIAS = config.COR_CATEGORIA[:3] 
+        # Cores para o futuro (cores cheias)
+        CORES_CATEGORIAS_FUTURO = config.COR_CATEGORIA[:3] 
+        # Cores para o passado (cores com alpha menor)
+        CORES_CATEGORIAS_PASSADO = config.COR_CATEGORIA_PASSADO[:3] 
         
         # 1. Preparar os dados combinados (Passado + Futuro)
         dados_plot = pacientes_futuro.copy()
@@ -255,14 +257,13 @@ class ERVolumeFrame(customtkinter.CTkFrame):
             # Substitui os dados futuros pelos dados passados para as horas históricas
             dados_plot[i] = pacientes_passado[i]
 
-        # 2. Definir as cores por barra (Passado, Futuro, Atual)
-        cores_por_hora = [config.COR_FUTURO] * 24 # Cor padrão: Futuro
+        # 2. Definir as cores de BORDA (Passado/Futuro/Atual) para o destaque
+        cores_por_hora = [config.COR_FUTURO] * 24 # Cor padrão: Futuro (para borda)
         for i in indices_passado:
-            cores_por_hora[i] = config.COR_PASSADO # Cores do passado
+            cores_por_hora[i] = config.COR_PASSADO # Cores do passado (para borda)
             
-        cores_por_hora[tempo_atual] = config.COR_HORARIO_ATUAL # Cor do horário atual
+        cores_por_hora[tempo_atual] = config.COR_HORARIO_ATUAL # Cor do horário atual (para borda)
         
-        # --- LÓGICA DE CENTRALIZAÇÃO CÍCLICA ---
         JANELA_DE_VISUALIZACAO = 10 
         metade_janela_esquerda = 5 # 5 horas antes do tempo atual
         metade_janela_direita = 4  # 4 horas depois do tempo atual (total 10 barras: 5+1+4)
@@ -277,9 +278,10 @@ class ERVolumeFrame(customtkinter.CTkFrame):
         # O valor do x (coordenada) que será plotado
         x_plot = indices_brutos 
         
-        # 2. Reorganizar os dados (plot_data, plot_colors) para o trecho visualizado
+        # 2. Reorganizar os dados para o trecho visualizado
         dados_plot_unrolled = dados_plot[indices_data]
-        cores_por_hora_unrolled = np.array(cores_por_hora)[indices_data]
+        # Pegar as cores de BORDA apenas para as barras que serão mostradas na janela
+        cores_por_hora_unrolled = np.array(cores_por_hora)[indices_data] 
         
         # Labels para os ticks (os horários reais que serão mostrados)
         x_ticks_labels = indices_data
@@ -288,58 +290,81 @@ class ERVolumeFrame(customtkinter.CTkFrame):
         if self.modo_visualizacao_idx == 0:
             # Modo Total (Empilhado)
             categorias_a_plotar = CATEGORIAS
-            cores_a_usar = CORES_CATEGORIAS
-            bottoms = np.zeros(len(x_plot)) # Usar bottoms para empilhar
+            
+            # Cria uma lista de cores para cada categoria (Passado vs. Futuro)
+            cores_a_usar_por_categoria = [] 
+            for i in range(len(CATEGORIAS)):
+                cores_para_plotagem = []
+                for j, hora in enumerate(indices_data):
+                    # Se for passado E não for o tempo atual, usa a cor de passado
+                    if hora in indices_passado and hora != tempo_atual: 
+                        cores_para_plotagem.append(CORES_CATEGORIAS_PASSADO[i])
+                    else:
+                        # Futuro ou a hora atual (usa a cor cheia para o preenchimento)
+                        cores_para_plotagem.append(CORES_CATEGORIAS_FUTURO[i]) 
+                cores_a_usar_por_categoria.append(cores_para_plotagem)
+            
+            bottoms = np.zeros(len(x_plot)) 
             titulo_grafico = "Total (Empilhado)"
             
         else:
             # Modos Individuais (1: Internação, 2: Alta, 3: UTI)
-            idx_categoria = self.modo_visualizacao_idx - 1 # 0, 1 ou 2
+            idx_categoria = self.modo_visualizacao_idx - 1 
             categoria_selecionada = CATEGORIAS[idx_categoria]
             
-            # Apenas uma categoria para plotar
             categorias_a_plotar = [categoria_selecionada]
-            cores_a_usar = [CORES_CATEGORIAS[idx_categoria]]
+            
+            # --- MODIFICAÇÃO CHAVE AQUI PARA MODOS INDIVIDUAIS ---
+            cores_para_plotagem_individual = []
+            for j, hora in enumerate(indices_data):
+                # Se for passado E não for o tempo atual, usa a cor de passado
+                if hora in indices_passado and hora != tempo_atual:
+                    cores_para_plotagem_individual.append(CORES_CATEGORIAS_PASSADO[idx_categoria])
+                else:
+                    # Futuro ou a hora atual (usa a cor cheia para o preenchimento)
+                    cores_para_plotagem_individual.append(CORES_CATEGORIAS_FUTURO[idx_categoria])
+            
+            # cores_a_usar_por_categoria é uma lista de listas. No modo individual, é uma lista com a lista de 10 cores.
+            cores_a_usar_por_categoria = [cores_para_plotagem_individual]
             
             # Cria uma matriz de dados onde apenas a categoria selecionada tem valores
-            # Esta matriz substitui dados_plot_unrolled para esta plotagem
             dados_plot_individual = np.zeros_like(dados_plot_unrolled)
-            # Copia os valores da categoria selecionada para a primeira coluna da matriz
             dados_plot_individual[:, 0] = dados_plot_unrolled[:, idx_categoria] 
-            dados_plot_unrolled = dados_plot_individual # Usa a matriz individual para o loop
+            dados_plot_unrolled = dados_plot_individual 
             
-            bottoms = np.zeros(len(x_plot)) # Não usar bottoms para barras simples
+            bottoms = np.zeros(len(x_plot))
             titulo_grafico = categoria_selecionada
             
         # 3. Plotar as barras
-        # O loop só rodará 1 vez no modo individual e 3 vezes no modo total
         for i, categoria in enumerate(categorias_a_plotar):
-            valores = dados_plot_unrolled[:, i] # Usa a coluna 0 no modo individual
+            valores = dados_plot_unrolled[:, i] 
+            
+            # Lista de 10 cores (uma para cada barra)
+            cores_para_categoria = cores_a_usar_por_categoria[i]
             
             # Plota as barras da categoria
-            barras = self.ax.bar(x_plot, valores, bottom=bottoms, color=cores_a_usar[i], width=0.6, align="center")
+            barras = self.ax.bar(x_plot, valores, bottom=bottoms, color=cores_para_categoria, width=0.6, align="center") 
             
-            # Pinta a borda da barra com a cor de status (Passado/Futuro/Atual)
-            for j, bar in enumerate(barras):
-                #bar.set_edgecolor(cores_por_hora_unrolled[j]) 
-                bar.set_linewidth(6) # Define a espessura da linha de borda para destacar
-            
+            # Aplica o destaque de borda para o horário ATUAL em todas as categorias
+            # len(barras)//2 é o índice da barra do tempo atual na janela
             barras[len(barras)//2].set_edgecolor(cores_por_hora_unrolled[len(barras)//2])
-
-            # Adiciona a entrada da categoria na legenda
-            self.ax.bar(0, 0, color='none', edgecolor=cores_a_usar[i], linewidth=10, label=categoria)
+            barras[len(barras)//2].set_linewidth(6) 
+            
+            # Adiciona a entrada da categoria na legenda (usando a cor cheia/futuro)
+            self.ax.bar(0, 0, color=CORES_CATEGORIAS_FUTURO[i if self.modo_visualizacao_idx == 0 else idx_categoria], linewidth=0, label=categoria)
             
             # Atualiza o `bottom` SOMENTE no modo Total
             if self.modo_visualizacao_idx == 0:
                 bottoms += valores
 
-        # 4. Adicionar a legenda de status (Passado/Futuro/Atual) e configurações
-        # self.ax.bar(0, 0, color='none', edgecolor=config.COR_PASSADO, linewidth=10, label="Passado")
-        # self.ax.bar(0, 0, color='none', edgecolor=config.COR_FUTURO, linewidth=10, label="Futuro")
-        self.ax.bar(0, 0, color='none', edgecolor=config.COR_HORARIO_ATUAL, linewidth=10, label="Atual")
+        # 4. Adicionar a legenda de status (Passado/Futuro/Atual)
+        # Usamos cores de borda para representar os status na legenda
+        self.ax.bar(0, 0, color='none', edgecolor=config.COR_PASSADO, linewidth=5, label="Passado") 
+        self.ax.bar(0, 0, color='none', edgecolor=config.COR_FUTURO, linewidth=5, label="Futuro") 
+        self.ax.bar(0, 0, color='none', edgecolor=config.COR_HORARIO_ATUAL, linewidth=6, label="Atual")
 
         # Configurações do eixo e legenda
-        self.ax.set_title(f"Volume do PS - {titulo_grafico}") # TÍTULO DINÂMICO
+        self.ax.set_title(f"Volume do PS - {titulo_grafico}") 
         self.ax.set_xlabel(f'Horário do Dia: {tempo_atual:02d}h', color='black', fontsize=16)
         self.ax.set_ylabel("Ocorrências", color='black', fontsize=16)
         
@@ -379,7 +404,6 @@ class ERVolumeFrame(customtkinter.CTkFrame):
 
 
 class PaginaStatusHospital(customtkinter.CTkFrame):
-# ... (o restante da classe PaginaStatusHospital permanece inalterado) ...
     """
     Página principal que exibe os status do hospital,
     incluindo totais de pacientes, previsões e gráficos.
@@ -391,8 +415,8 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
         super().__init__(master, **kwargs)
         
         self.indice_paciente_atual = 0
-        self.pacientes_passado = np.zeros((24, 3)) # ALTERADO: Array 24x3 para [Hora, Estado]
-        self.pacientes_futuro = np.zeros((24, 3)) # ALTERADO: Array 24x3 para [Hora, Estado]
+        self.pacientes_passado = np.zeros((24, 3)) 
+        self.pacientes_futuro = np.zeros((24, 3)) 
         self.means = []
         
         self.simulacao_pausada = False
@@ -450,7 +474,6 @@ class PaginaStatusHospital(customtkinter.CTkFrame):
             text="Pausar Simulação",
             command=self.alternar_simulacao
         )
-        # O botão foi movido para a coluna 0, linha 4 para não conflitar, ou ajustado na coluna 2
         self.btn_pausa.grid(column=2, row=4, pady=config.FRAME_GAP, padx=config.FRAME_GAP, sticky="se") 
 
         self.after_id = self.after(2000, self.atualizar_dados)
