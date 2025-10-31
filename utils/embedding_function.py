@@ -77,25 +77,28 @@ def get_embeddings_series(text_series: pd.Series, tokenizer=tokenizer, model=mod
 
 #testes:
 
-data = {
-    'id_queixa': [1, 2, 3, 4, 5,6,7,8,9,10],
-    'texto_queixa': [
-        "Dor de cabeca e febre",
-        "Febre e dor de cabeca",
-        "Dor de garganta",
-        "Dor de ouvido e dor de garganta",
-        "Joelho esfolado",
-        "Corte no braco",
-        "Queimadura leve",
-        "Enxaqueca",
-        "Dor de cabeca latejante",
-        "Dor de ouvido"
-        ""
-    ]
-}
-df = pd.DataFrame(data)
+if __name__ == "__main__":
+    
+    data = {
+        'id_queixa': [1, 2, 3, 4, 5,6,7,8,9,10],
+        'texto_queixa': [
+            "Dor de cabeca e febre",
+            "Febre e dor de cabeca",
+            "Dor de garganta",
+            "Dor de ouvido e dor de garganta",
+            "Joelho esfolado",
+            "Corte no braco",
+            "Queimadura leve",
+            "Enxaqueca",
+            "Dor de cabeca latejante",
+            "Dor de ouvido"
+            ""
+        ]
+    }
+    
+    df = pd.DataFrame(data)
 
-df['embedding'] = list(get_embeddings_series(df['texto_queixa'], tokenizer, model, device))
+    df['embedding'] = list(get_embeddings_series(df['texto_queixa'], tokenizer, model, device))
 
-print(df["embedding"])
+    print(df["embedding"])
 
