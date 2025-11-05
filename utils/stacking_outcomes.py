@@ -1,161 +1,168 @@
-import numpy as np
 import pandas as pd
-from sklearn.model_selection import cross_val_score, train_test_split
-from sklearn.preprocessing import PolynomialFeatures, StandardScaler
-from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import Pipeline
-from sklearn.metrics import classification_report, confusion_matrix
-from matplotlib import pyplot as plt
+import numpy as np
 import seaborn as sns
+from matplotlib import pyplot as plt
+import matplotlib.dates as mdates
+from probs import previsao_convolucao
 
 
+def calcular_metricas_grupo(caminho_dataset, agregacao="hora" , nome_arquivo="data_frame"):
+    '''
+    recebe um dataset com as colunas: TA_DH_PRE_ATENDIMENTO,Dia,Hora,MOV_TIPO_LEITO,Alta,UI,UTI
 
-def modelo_linear_stacking(matrix_validation):
-    
-    y_true = matrix_validation[:, 0]
-    X_meta = matrix_validation[:, 2:4].astype(float) 
-    
-    pipe_linear = Pipeline([
-        ('scaler', StandardScaler()),
-        ('meta_model', LogisticRegression(solver='lbfgs', max_iter=1000, random_state=42))
-    ])
-    
-    pipe_linear.fit(X_meta, y_true)
-    
-    return pipe_linear
+    e retorna um dataset do tipo: dia, hora, numero observado altas, ui e uti, numero previsto altas, ui e uti
 
-def modelo_quadratico_stacking(matrix_validation):
-    
-    y_true = matrix_validation[:, 0]
-    X_meta = matrix_validation[:, 2:4].astype(float) 
-    
-    pipe_quadratico = Pipeline([
-        ('poly', PolynomialFeatures(degree=2, include_bias=False)),
-        ('scaler', StandardScaler()),
-        ('meta_model', LogisticRegression(solver='lbfgs', max_iter=1000, random_state=42))
-    ])
-    
-    pipe_quadratico.fit(X_meta, y_true)
-    
-    return pipe_quadratico
+    '''
 
+    data_frame = pd.read_csv(caminho_dataset)
+    data_frame = data_frame.sort_values(by='TA_DH_PRE_ATENDIMENTO')
 
-df = pd.read_csv('files/data/val_fechamentos_e_probabilities.csv')
+    if agregacao.lower() == '6h':
+        data_frame['Hora'] = (data_frame['Hora'] // 6) * 6
 
-df_filtrado = df[['MOV_TIPO_LEITO', 'Alta', 'UI','UTI']]
+    elif agregacao.lower() == 'dia':
+        data_frame['Hora'] = 0
 
+    grupos = data_frame.groupby(['Dia','Hora'])
+    linhas = []
 
-
-def gerar_visualizacao_linha_tempo(caminho_val, caminho_teste, coluna_hora):
-
-    try:
-        df_val = pd.read_csv(caminho_val)
-    except FileNotFoundError:
-        print(f"Erro: Arquivo de validação '{caminho_val}' não encontrado.")
-        return
-
-    colunas_stacking = ['MOV_TIPO_LEITO', 'Alta', 'UI', 'UTI']
-    
-    try:
-        df_val_filtrado = df_val[colunas_stacking]
-        matrix_val = df_val_filtrado.to_numpy()
-    except KeyError:
-        print(f"Erro: Colunas {colunas_stacking} não encontradas no arquivo de validação.")
-        return
-
-    modelo_linear = modelo_linear_stacking(matrix_val)
-    modelo_quadratico = modelo_quadratico_stacking(matrix_val)
-
-    try:
-        df_test = pd.read_csv(caminho_teste)
-    except FileNotFoundError:
-        print(f"Erro: Arquivo de teste '{caminho_teste}' não encontrado.")
-        return
-
-    colunas_necessarias_teste = colunas_stacking + [coluna_hora]
-    if not all(col in df_test.columns for col in colunas_necessarias_teste):
-        print(f"Erro: O arquivo de teste deve conter as colunas: {colunas_necessarias_teste}")
-        return
+    for (dia, hora), grupo in grupos:
+        num_observado_altas = (grupo['MOV_TIPO_LEITO'] == 0).sum()
+        num_observado_ui = (grupo['MOV_TIPO_LEITO'] == 1).sum()
+        num_observado_uti = (grupo['MOV_TIPO_LEITO'] == 10).sum()
+        previsto_uti = grupo['UTI'].sum()
+        previsto_ui = grupo['UI'].sum()
+        previsto_alta = grupo['Alta'].sum()
         
-    df_test_filtrado = df_test[colunas_necessarias_teste].copy()
+        linhas.append({
+            'Dia':dia,
+            'Hora': hora,
+            'num_observado_altas': num_observado_altas,
+            'num_observado_ui': num_observado_ui,
+            'num_observado_uti': num_observado_uti,
+            'num_previsto_altas': previsto_alta,
+            'num_previsto_ui': previsto_ui,
+            'num_previsto_uti': previsto_uti
+        })
 
-    linhas_invalidas = df_test_filtrado[coluna_hora].isna().sum()
-    if linhas_invalidas > 0:
-        print(f"Aviso: Removendo {linhas_invalidas} linhas com '{coluna_hora}' nula.")
-        df_test_filtrado = df_test_filtrado.dropna(subset=[coluna_hora])
-        
-    X_meta_test = df_test_filtrado[['UI', 'UTI']].astype(float).to_numpy()
+    data_frame_agg = pd.DataFrame(linhas)
 
-    mapa_outcomes = {
-        0.0: 'Alta',
-        1.0: 'UI',
-        10.0: 'UTI'
-    }
+    if agregacao.lower() == 'dia':
+        data_frame = data_frame.drop(columns=['Hora'])
+
+    if agregacao.lower() in ['hora', '6h', 'dia']:
+        #data_frame_agg.to_csv(f'{nome_arquivo}.csv', index=False)
+        return data_frame_agg        
+    else:
+        print('verifique a agregacao escolhida!')
+        return None
+    pass
+
+def visualizacao(data_set, agregacao="hora", titulo=" "):
     
-    y_pred_linear_num = modelo_linear.predict(X_meta_test)
-    y_pred_quad_num = modelo_quadratico.predict(X_meta_test)
-    y_realizado_num = df_test_filtrado['MOV_TIPO_LEITO'] 
+    if isinstance(data_set, str):
+        df = pd.read_csv(data_set)
+    else:
+        df = data_set
 
-    df_resultados = pd.DataFrame({
-        'Hora': df_test_filtrado[coluna_hora].astype(int),
+    if agregacao.lower() == 'dia':
+        eixo_x = df['Dia']
         
-        'Original': df_test_filtrado[['Alta', 'UI', 'UTI']].idxmax(axis=1),
+    elif agregacao.lower() == '6h':
+        eixo_x = df['Dia'].astype(str) + ' ' + df['Hora'].astype(str) + 'h'
         
-        'Realizado': y_realizado_num.map(mapa_outcomes),
-        'Linear': pd.Series(y_pred_linear_num).map(mapa_outcomes),
-        'Quadrático': pd.Series(y_pred_quad_num).map(mapa_outcomes)
-    })
+    else:
+        eixo_x = df['Dia'].astype(str) + ' ' + df['Hora'].astype(str) + 'h'
+        
 
-    df_long = df_resultados.melt(
-        id_vars=['Hora'], 
-        value_vars=['Realizado', 'Original', 'Linear', 'Quadrático'],
-        var_name='Tipo',  
-        value_name='Outcome' 
-    )
+    corr_alta = df['num_observado_altas'].corr(df['num_previsto_altas'])
+    corr_ui = df['num_observado_ui'].corr(df['num_previsto_ui'])
+    corr_uti = df['num_observado_uti'].corr(df['num_previsto_uti'])
 
-    df_agg = df_long.groupby(['Hora', 'Tipo', 'Outcome']).size().reset_index(name='Contagem')
+    fig, axes = plt.subplots(3, 1, figsize=(10, 5), sharex=True)
 
 
-    if df_agg.empty:
-        print("="*50)
-        print("ERRO: O DataFrame agregado está vazio.")
-        print("Isso pode acontecer se o 'mapa_outcomes' ainda estiver incorreto.")
-        print("Valores únicos em 'MOV_TIPO_LEITO':", df_test_filtrado['MOV_TIPO_LEITO'].unique())
-        print("Valores únicos em 'y_pred_linear_num':", np.unique(y_pred_linear_num))
-        print("="*50)
-        return
+    axes[0].plot(eixo_x, df['num_observado_altas'], label='observado')
+    axes[0].plot(eixo_x, df['num_previsto_altas'], label='previsto')
+    axes[0].set_title(f'Altas (correlação Real x Previsto ={corr_alta:.3f})')
+    axes[0].legend()
+    axes[0].tick_params(axis='x', rotation=90)
 
-    g = sns.relplot(
-        data=df_agg,
-        x='Hora',
-        y='Contagem',
-        hue='Tipo',      
-        col='Outcome',    
-        kind='line',      
-        col_wrap=1,      
-        height=4,        
-        aspect=3,        
-        col_order=['Alta', 'UI', 'UTI'], 
-        hue_order=['Realizado', 'Original', 'Linear', 'Quadrático'], 
-        style='Tipo',  
-        markers=True,
-        dashes=False
-    )
+    axes[1].plot(eixo_x, df['num_observado_ui'], label='observado')
+    axes[1].plot(eixo_x, df['num_previsto_ui'], label='previsto')
+    axes[1].set_title(f'UI (correlação Real x Previsto ={corr_ui:.3f})')
+    axes[1].legend()
+    axes[1].tick_params(axis='x', rotation=90)
+
+    axes[2].plot(eixo_x, df['num_observado_uti'], label='observado')
+    axes[2].plot(eixo_x, df['num_previsto_uti'], label='previsto')
+    axes[2].set_title(f'UTI (correlação Real x Previsto ={corr_uti:.3f})')
+    axes[2].legend()
+    axes[2].tick_params(axis='x', rotation=90)
+
+    axes[0].set_xticks([])
+    axes[1].set_xticks([])
+    axes[2].set_xticks([])
+
+
+    fig.suptitle(titulo)
+    plt.tight_layout()
+    #plt.savefig(f'{titulo}.png')
+    plt.show()
+
+
+def visualizacao_alta_naoalta(data_set, agregacao="hora", titulo=" "):
     
-    g.set_axis_labels("Hora do Dia", "Contagem de Pacientes")
-    g.set_titles("Distribuição por Hora - Outcome: {col_name}")
-    g.set(xticks=range(0, 24))
-    g.fig.suptitle('Previsão vs. Realizado por Hora do Dia', fontsize=16, y=1.03)
-    
+    if isinstance(data_set, str):
+        df = pd.read_csv(data_set)
+    else:
+        df = data_set
+
+    # Define eixo X
+    if agregacao.lower() == 'dia':
+        eixo_x = df['Dia']
+    elif agregacao.lower() == '6h':
+        eixo_x = df['Dia'].astype(str) + ' ' + df['Hora'].astype(str) + 'h'
+    else:
+        eixo_x = df['Dia'].astype(str) + ' ' + df['Hora'].astype(str) + 'h'
+        
+    # Cria colunas somadas UI + UTI
+    df['num_observado_naoalta'] = df['num_observado_ui'] + df['num_observado_uti']
+    df['num_previsto_naoalta'] = df['num_previsto_ui'] + df['num_previsto_uti']
+
+    # Correlações
+    corr_alta = df['num_observado_altas'].corr(df['num_previsto_altas'])
+    corr_naoalta = df['num_observado_naoalta'].corr(df['num_previsto_naoalta'])
+
+    # Gráficos
+    fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+
+    # Altas
+    axes[0].plot(eixo_x, df['num_observado_altas'], label='Observado')
+    axes[0].plot(eixo_x, df['num_previsto_altas'], label='Previsto')
+    axes[0].set_title(f'Altas (Correlação Real x Previsto = {corr_alta:.3f})')
+    axes[0].legend()
+    axes[0].tick_params(axis='x', rotation=90)
+
+    # UI + UTI (Não Altas)
+    axes[1].plot(eixo_x, df['num_observado_naoalta'], label='Observado')
+    axes[1].plot(eixo_x, df['num_previsto_naoalta'], label='Previsto')
+    axes[1].set_title(f'UI + UTI (Correlação Real x Previsto = {corr_naoalta:.3f})')
+    axes[1].legend()
+    axes[1].tick_params(axis='x', rotation=90)
+
+    axes[0].set_xticks([])
+    axes[1].set_xticks([])
+
+    fig.suptitle(titulo)
     plt.tight_layout()
     plt.show()
 
+
 if __name__ == "__main__":
-    
-    CAMINHO_VALIDACAO = 'files/data/val_fechamentos_e_probabilities.csv'
-    CAMINHO_TESTE = 'files/data/test_fechamentos_e_probabilities.csv'
+        
+    dataset = calcular_metricas_grupo('files/data/val_fechamentos_e_probabilities.csv', 'dia', nome_arquivo=f"Validation Agregado")
 
-    COLUNA_HORA = 'Hora'
+    visualizacao_alta_naoalta(dataset, 'dia', titulo=f"validationAgregado")
 
-    gerar_visualizacao_linha_tempo(CAMINHO_VALIDACAO, CAMINHO_TESTE, COLUNA_HORA)
     

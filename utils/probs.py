@@ -175,7 +175,8 @@ def previsao_convolucao(pacientes: np.ndarray, threshold:float=0, lim_leitos = F
     t = time.time() - t
     
     # Retorno
-    return [[dist_uti_pmf, dist_internacao_pmf, dist_altas_pmf], [dist_uti_cdf, dist_internacao_cdf, dist_altas_cdf], [int(np.sum(probs_utis)), int(np.sum(probs_internacao)), int(np.sum(probs_altas))]]
+    return [[dist_uti_pmf, dist_internacao_pmf, dist_altas_pmf], [dist_uti_cdf, dist_internacao_cdf, dist_altas_cdf], [np.sum(probs_utis), np.sum(probs_internacao), np.sum(probs_altas)]]
+
 
 def previsao_rna_fft(pacientes: np.ndarray, utis: int=4, internacoes: int=4, altas: int=4, threshold:float=0):
 

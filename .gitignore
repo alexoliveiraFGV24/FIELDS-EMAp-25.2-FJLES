@@ -87,3 +87,5 @@ pytest_cache/
 
 # Arquivos sensíveis
 /files/data/
+
+/files/analises/
