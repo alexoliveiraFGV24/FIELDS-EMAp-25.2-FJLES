@@ -6,7 +6,7 @@ import matplotlib.dates as mdates
 from probs import previsao_convolucao
 
 
-def calcular_metricas_grupo(caminho_dataset, agregacao="hora" , nome_arquivo="data_frame"):
+def calcular_metricas_grupo(caminho_dataset, agregacao="hora" , nome_arquivo="data_frame", salvar=False):
     '''
     recebe um dataset com as colunas: TA_DH_PRE_ATENDIMENTO,Dia,Hora,MOV_TIPO_LEITO,Alta,UI,UTI
 
@@ -51,7 +51,9 @@ def calcular_metricas_grupo(caminho_dataset, agregacao="hora" , nome_arquivo="da
         data_frame = data_frame.drop(columns=['Hora'])
 
     if agregacao.lower() in ['hora', '6h', 'dia']:
-        #data_frame_agg.to_csv(f'{nome_arquivo}.csv', index=False)
+        if salvar:
+            data_frame_agg.to_csv(f'{nome_arquivo}.csv', index=False)
+        
         return data_frame_agg        
     else:
         print('verifique a agregacao escolhida!')
@@ -83,19 +85,19 @@ def visualizacao(data_set, agregacao="hora", titulo=" "):
 
 
     axes[0].plot(eixo_x, df['num_observado_altas'], label='observado')
-    axes[0].plot(eixo_x, df['num_previsto_altas'], label='previsto')
+    axes[0].plot(eixo_x, df['num_previsto_altas'], label='previsto', alpha=0.8)
     axes[0].set_title(f'Altas (correlação Real x Previsto ={corr_alta:.3f})')
     axes[0].legend()
     axes[0].tick_params(axis='x', rotation=90)
 
     axes[1].plot(eixo_x, df['num_observado_ui'], label='observado')
-    axes[1].plot(eixo_x, df['num_previsto_ui'], label='previsto')
+    axes[1].plot(eixo_x, df['num_previsto_ui'], label='previsto', alpha=0.8)
     axes[1].set_title(f'UI (correlação Real x Previsto ={corr_ui:.3f})')
     axes[1].legend()
     axes[1].tick_params(axis='x', rotation=90)
 
     axes[2].plot(eixo_x, df['num_observado_uti'], label='observado')
-    axes[2].plot(eixo_x, df['num_previsto_uti'], label='previsto')
+    axes[2].plot(eixo_x, df['num_previsto_uti'], label='previsto', alpha=0.8)
     axes[2].set_title(f'UTI (correlação Real x Previsto ={corr_uti:.3f})')
     axes[2].legend()
     axes[2].tick_params(axis='x', rotation=90)
@@ -107,8 +109,8 @@ def visualizacao(data_set, agregacao="hora", titulo=" "):
 
     fig.suptitle(titulo)
     plt.tight_layout()
-    #plt.savefig(f'{titulo}.png')
-    plt.show()
+    plt.savefig(f'{titulo}.png')
+    #plt.show()
 
 
 def visualizacao_alta_naoalta(data_set, agregacao="hora", titulo=" "):
@@ -138,15 +140,15 @@ def visualizacao_alta_naoalta(data_set, agregacao="hora", titulo=" "):
     fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
 
     # Altas
-    axes[0].plot(eixo_x, df['num_observado_altas'], label='Observado')
-    axes[0].plot(eixo_x, df['num_previsto_altas'], label='Previsto')
+    axes[0].plot(eixo_x, df['num_observado_altas'], label='Observado', alpha=0.8,  linewidth=1.5)
+    axes[0].plot(eixo_x, df['num_previsto_altas'], label='Previsto', alpha=0.7, linewidth=1.0)
     axes[0].set_title(f'Altas (Correlação Real x Previsto = {corr_alta:.3f})')
     axes[0].legend()
     axes[0].tick_params(axis='x', rotation=90)
 
     # UI + UTI (Não Altas)
-    axes[1].plot(eixo_x, df['num_observado_naoalta'], label='Observado')
-    axes[1].plot(eixo_x, df['num_previsto_naoalta'], label='Previsto')
+    axes[1].plot(eixo_x, df['num_observado_naoalta'], label='Observado', alpha=0.8, linewidth=1.5)
+    axes[1].plot(eixo_x, df['num_previsto_naoalta'], label='Previsto', alpha=0.7, linewidth=1)
     axes[1].set_title(f'UI + UTI (Correlação Real x Previsto = {corr_naoalta:.3f})')
     axes[1].legend()
     axes[1].tick_params(axis='x', rotation=90)
@@ -156,13 +158,16 @@ def visualizacao_alta_naoalta(data_set, agregacao="hora", titulo=" "):
 
     fig.suptitle(titulo)
     plt.tight_layout()
-    plt.show()
+    plt.savefig(f'{titulo}.png')
+    #plt.show()
 
 
 if __name__ == "__main__":
-        
-    dataset = calcular_metricas_grupo('files/data/val_fechamentos_e_probabilities.csv', 'dia', nome_arquivo=f"Validation Agregado")
 
-    visualizacao_alta_naoalta(dataset, 'dia', titulo=f"validationAgregado")
+    for each in ['dia', '6h', 'hora']:
+
+        dataset = calcular_metricas_grupo('files/data/val_fechamentos_e_probabilities.csv', each, nome_arquivo=f"{each}")
+
+        visualizacao_alta_naoalta(dataset, each, titulo=f"Validation agregado hierarquico - {each}")
 
     

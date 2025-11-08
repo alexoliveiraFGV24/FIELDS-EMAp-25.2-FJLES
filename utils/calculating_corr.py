@@ -120,6 +120,10 @@ COLUNA_DIA = 'Dia'
 
 df_medias = calcular_medias_horarias(CAMINHO_ARQUIVO, COLUNA_HORA, COLUNA_DIA)
 
-print(sum(df_medias['idxmax_Alta']))
+medias = df_medias[['Real_Alta', 'Real_UI', 'Real_UTI']]
+
+print(medias)
+
+medias.to_csv(f"medias.csv", index=False)
 
 
