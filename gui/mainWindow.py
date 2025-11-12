@@ -21,6 +21,12 @@ class App(customtkinter.CTk):
         self.tab_view = MyTabView(master=self, width=config.SCREEN_WIDTH, height=config.SCREEN_HEIGHT)
         self.tab_view.grid(row=0, column=0, padx=1, pady=1, sticky="nsew")
 
+        self.refresh_button = customtkinter.CTkButton(self, text="Atualizar Dados", command=self.refresh_all_tabs)
+        self.refresh_button.grid(row=1, column=0, padx=20, pady=10, sticky="se")
+
+    def refresh_all_tabs(self):
+        self.tab_view.refresh_all()
+
 if __name__ == "__main__":
     app = App()
     app.mainloop()
